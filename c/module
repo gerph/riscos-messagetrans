@@ -1,0 +1,467 @@
+/*******************************************************************
+ * File:     veneer
+ * Purpose:  SWI veneers for the Messagetrans module
+ * Author:   XXX
+ * Date:     13 Jul 2025
+ ******************************************************************/
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "kernel.h"
+#include "modhead.h"
+
+
+/* Define this to debug this file */
+//#define DEBUG
+
+
+#ifdef DEBUG
+#define dprintf if (1) printf
+#else
+#define dprintf if (0) printf
+#endif
+
+
+
+
+/***************************************************************************
+ * Function:     Mod_Init
+ * Description:  Initialise the module, setting up vectors, callbacks and
+ *               any other parts of the system necessary for the module to
+ *               function.
+ * Parameters:   tail        = pointer to command line (control terminated)
+ *               podule_base = address of podule module was started from, or
+ *                             NULL if none
+ *               pw          = private word for module
+ * On exit:      Return NULL for successful initialisation, or a pointer to
+ *               an error block if the module could not start properly.
+ **************************************************************************/
+_kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    dprintf("Messagetrans initialised\n");
+    return err;
+}
+
+
+
+/***************************************************************************
+ * Function:     Mod_Final
+ * Description:  Finalise the module, shutting down any systems necessary,
+ *               freeing vectors and releasing workspace
+ * Parameters:   fatal       = fatality indicator; 1 if fatal, 0 if
+ *                             reinitialising
+ *               podule_base = address of podule module was started from, or
+ *                             NULL if none
+ *               pw          = private word for module
+ * On exit:      Return 0 for successful finalisation, or a pointer to an
+ *               error block if module was not shutdown properly.
+ **************************************************************************/
+_kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
+{
+    dprintf("Messagetrans finalised\n");
+    return NULL;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_FileInfo
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_FileInfo(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_FileInfo - Gives information about a message file
+     *
+     * =>  R1 -> file_name
+     * <=  R0 = flags
+     *     R2 = size
+     */
+
+    /* Input registers */
+    char * file_name = (char *)r->r[1];
+    /* Output registers */
+    MessageTrans_FileFlags flags;
+    int32_t size;
+
+    /* FIXME: SWI not yet implemented */
+
+    r->r[0] = (int)flags;  // MessageTrans_FileFlags
+    r->r[2] = (int)size;  // .Int
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_OpenFile
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_OpenFile - Opens a message file
+     *
+     * =>  R0 = cb
+     *     R1 -> file_name
+     *     R2 = buffer
+     */
+
+    /* Input registers */
+    MessageTrans_ControlBlock * cb = (MessageTrans_ControlBlock *)r->r[0];
+    char * file_name = (char *)r->r[1];
+    char * buffer = (char *)r->r[2];
+
+    /* FIXME: SWI not yet implemented */
+
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_Lookup
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_Lookup - Translates a message token into a string
+     *
+     * =>  R0 -> cb
+     *     R1 -> token
+     *     R2 = buffer
+     *     R3 = size
+     *     R4 -> arg0
+     *     R5 -> arg1
+     *     R6 -> arg2
+     *     R7 -> arg3
+     * <=  R2 -> result
+     *     R3 = used
+     */
+
+    /* Input registers */
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
+    char * token = (char *)r->r[1];
+    char * buffer = (char *)r->r[2];
+    int32_t size = (int32_t)r->r[3];
+    char * arg0 = (char *)r->r[4];
+    char * arg1 = (char *)r->r[5];
+    char * arg2 = (char *)r->r[6];
+    char * arg3 = (char *)r->r[7];
+    /* Output registers */
+    char * result;
+    int32_t used;
+
+    /* FIXME: SWI not yet implemented */
+
+    r->r[2] = (int)result;  // .String
+    r->r[3] = (int)used;  // .Int
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_MakeMenus
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_MakeMenus - Sets up a menu structure from a definition containing references to tokens
+     *
+     * =>  R0 -> cb
+     *     R1 -> menus
+     *     R2 = buffer
+     *     R3 = size
+     * <=  R3 = used
+     */
+
+    /* Input registers */
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
+    void * menus = (void *)r->r[1];
+    char * buffer = (char *)r->r[2];
+    int32_t size = (int32_t)r->r[3];
+    /* Output registers */
+    int32_t used;
+
+    /* FIXME: SWI not yet implemented */
+
+    r->r[3] = (int)used;  // .Int
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_CloseFile
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_CloseFile - Closes a message file
+     *
+     * =>  R0 -> cb
+     */
+
+    /* Input registers */
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
+
+    /* FIXME: SWI not yet implemented */
+
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_EnumerateTokens
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_EnumerateTokens - Enumerates tokens that match a wildcarded token
+     *
+     * =>  R0 -> cb
+     *     R1 -> token
+     *     R2 = buffer
+     *     R3 = size
+     *     R4 = context
+     * <=  R2 = more
+     *     R3 = used
+     *     R4 = context_out
+     */
+
+    /* Input registers */
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
+    char * token = (char *)r->r[1];
+    char * buffer = (char *)r->r[2];
+    int32_t size = (int32_t)r->r[3];
+    int32_t context = (int32_t)r->r[4];
+    /* Output registers */
+    bool more;
+    int32_t used;
+    int32_t context_out;
+
+    /* FIXME: SWI not yet implemented */
+
+    r->r[2] = (int)more;  // .Bool
+    r->r[3] = (int)used;  // .Int
+    r->r[4] = (int)context_out;  // .Int
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_ErrorLookup
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_ErrorLookup - Translates a message token within an error block
+     *
+     * =>  R0 -> error
+     *     R1 -> cb
+     *     R2 = buffer
+     *     R3 = size
+     *     R4 -> arg0
+     *     R5 -> arg1
+     *     R6 -> arg2
+     *     R7 -> arg3
+     */
+
+    /* Input registers */
+    OS_Error *error = (OS_Error *)r->r[0];
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[1];
+    OS_Error * buffer = (OS_Error *)r->r[2];
+    int32_t size = (int32_t)r->r[3];
+    char * arg0 = (char *)r->r[4];
+    char * arg1 = (char *)r->r[5];
+    char * arg2 = (char *)r->r[6];
+    char * arg3 = (char *)r->r[7];
+
+    /* FIXME: SWI not yet implemented */
+
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_GSLookup
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_GSLookup - Translates a message token into a string and calls OS_GSTrans
+     *
+     * =>  R0 -> cb
+     *     R1 -> token
+     *     R2 = buffer
+     *     R3 = size
+     *     R4 -> arg0
+     *     R5 -> arg1
+     *     R6 -> arg2
+     *     R7 -> arg3
+     * <=  R2 -> result
+     *     R3 = used
+     */
+
+    /* Input registers */
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
+    char * token = (char *)r->r[1];
+    char * buffer = (char *)r->r[2];
+    int32_t size = (int32_t)r->r[3];
+    char * arg0 = (char *)r->r[4];
+    char * arg1 = (char *)r->r[5];
+    char * arg2 = (char *)r->r[6];
+    char * arg3 = (char *)r->r[7];
+    /* Output registers */
+    char * result;
+    int32_t used;
+
+    /* FIXME: SWI not yet implemented */
+
+    r->r[2] = (int)result;  // .String
+    r->r[3] = (int)used;  // .Int
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_CopyError
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_CopyError(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_CopyError - Copies an error into one of the MessageTrans internal buffers
+     *
+     * =>  R0 -> error
+     * <=  R0 -> copy
+     */
+
+    /* Input registers */
+    OS_Error *error = (OS_Error *)r->r[0];
+    /* Output registers */
+    OS_Error *copy;
+
+    /* FIXME: SWI not yet implemented */
+
+    r->r[0] = (int)copy;  // OS_Error
+    return err;
+}
+
+
+
+
+/***************************************************************************
+ * Description:  SWI handler routine for MessageTrans_Dictionary
+ * Parameters:   number = SWI number within SWI chunk (i.e. 0 to 63)
+ *               r      = pointer to register block on entry
+ *               pw     = private word for module
+ * On exit:      Return NULL if SWI handled sucessfully, setting return
+ *               register values (r0-r9) in r.
+ *               Return error_BAD_SWI for out of range SWIs.
+ *               Return an error block for a custom error.
+ **************************************************************************/
+_kernel_oserror *SWI_Dictionary(int number, _kernel_swi_regs *r, void *pw)
+{
+    _kernel_oserror *err = NULL;
+    /*
+     * MessageTrans_Dictionary - Returns a pointer to MessageTrans's internal dictionary
+     *
+     * <=  R0 -> dictionary
+     */
+
+    /* Output registers */
+    void * dictionary;
+
+    /* FIXME: SWI not yet implemented */
+
+    r->r[0] = (int)dictionary;  // .Data
+    return err;
+}
+
