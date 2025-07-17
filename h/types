@@ -1,0 +1,42 @@
+/*******************************************************************
+ * File:     types
+ * Purpose:  Types used for the Messagetrans module
+ * Author:   Gerph
+ * Date:     16 Jul 2025
+ ******************************************************************/
+
+#ifndef TYPES_H
+#define TYPES_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
+
+/* Constants */
+
+/* .Bits */
+#define Error_MessageTransTokenNotFound          ((uint32_t)0xac2)
+#define Error_MessageTransFileOpen               ((uint32_t)0xac1)
+#define Error_MessageTransSyntax                 ((uint32_t)0xac0)
+#define Error_MessageTransRecurse                ((uint32_t)0xac3)
+
+/* MessageTrans_FileFlags */
+#define MessageTrans_DirectAccess                ((MessageTrans_FileFlags)(1<<0))
+
+
+
+/* Types */
+
+typedef struct MessageTrans_ControlBlock {
+    uint32_t a;
+    uint32_t b;
+    uint32_t c;
+    uint32_t d;
+} MessageTrans_ControlBlock;
+
+typedef uint32_t MessageTrans_FileFlags;
+
+
+
+
+#endif

@@ -1,16 +1,18 @@
 /*******************************************************************
- * File:     veneer
+ * File:     module
  * Purpose:  SWI veneers for the Messagetrans module
- * Author:   XXX
+ * Author:   Gerph
  * Date:     13 Jul 2025
  ******************************************************************/
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "kernel.h"
 #include "modhead.h"
+#include "types.h"
 
 
 /* Define this to debug this file */
@@ -22,8 +24,6 @@
 #else
 #define dprintf if (0) printf
 #endif
-
-
 
 
 /***************************************************************************
@@ -78,7 +78,7 @@ _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_FileInfo(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_FileInfo(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -90,15 +90,15 @@ _kernel_oserror *SWI_FileInfo(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    char * file_name = (char *)r->r[1];
+    char * file_name = (char *)regs->r[1];
     /* Output registers */
     MessageTrans_FileFlags flags;
     int32_t size;
 
     /* FIXME: SWI not yet implemented */
 
-    r->r[0] = (int)flags;  // MessageTrans_FileFlags
-    r->r[2] = (int)size;  // .Int
+    regs->r[0] = (int)flags;  // MessageTrans_FileFlags
+    regs->r[2] = (int)size;  // .Int
     return err;
 }
 
@@ -115,7 +115,7 @@ _kernel_oserror *SWI_FileInfo(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -127,9 +127,9 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    MessageTrans_ControlBlock * cb = (MessageTrans_ControlBlock *)r->r[0];
-    char * file_name = (char *)r->r[1];
-    char * buffer = (char *)r->r[2];
+    MessageTrans_ControlBlock * cb = (MessageTrans_ControlBlock *)regs->r[0];
+    char * file_name = (char *)regs->r[1];
+    char * buffer = (char *)regs->r[2];
 
     /* FIXME: SWI not yet implemented */
 
@@ -149,7 +149,7 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -168,22 +168,22 @@ _kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
-    char * token = (char *)r->r[1];
-    char * buffer = (char *)r->r[2];
-    int32_t size = (int32_t)r->r[3];
-    char * arg0 = (char *)r->r[4];
-    char * arg1 = (char *)r->r[5];
-    char * arg2 = (char *)r->r[6];
-    char * arg3 = (char *)r->r[7];
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
+    char * token = (char *)regs->r[1];
+    char * buffer = (char *)regs->r[2];
+    int32_t size = (int32_t)regs->r[3];
+    char * arg0 = (char *)regs->r[4];
+    char * arg1 = (char *)regs->r[5];
+    char * arg2 = (char *)regs->r[6];
+    char * arg3 = (char *)regs->r[7];
     /* Output registers */
     char * result;
     int32_t used;
 
     /* FIXME: SWI not yet implemented */
 
-    r->r[2] = (int)result;  // .String
-    r->r[3] = (int)used;  // .Int
+    regs->r[2] = (int)result;  // .String
+    regs->r[3] = (int)used;  // .Int
     return err;
 }
 
@@ -200,7 +200,7 @@ _kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -214,16 +214,16 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
-    void * menus = (void *)r->r[1];
-    char * buffer = (char *)r->r[2];
-    int32_t size = (int32_t)r->r[3];
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
+    void * menus = (void *)regs->r[1];
+    char * buffer = (char *)regs->r[2];
+    int32_t size = (int32_t)regs->r[3];
     /* Output registers */
     int32_t used;
 
     /* FIXME: SWI not yet implemented */
 
-    r->r[3] = (int)used;  // .Int
+    regs->r[3] = (int)used;  // .Int
     return err;
 }
 
@@ -240,7 +240,7 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -250,7 +250,7 @@ _kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
 
     /* FIXME: SWI not yet implemented */
 
@@ -270,7 +270,7 @@ _kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -287,11 +287,11 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
-    char * token = (char *)r->r[1];
-    char * buffer = (char *)r->r[2];
-    int32_t size = (int32_t)r->r[3];
-    int32_t context = (int32_t)r->r[4];
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
+    char * token = (char *)regs->r[1];
+    char * buffer = (char *)regs->r[2];
+    int32_t size = (int32_t)regs->r[3];
+    int32_t context = (int32_t)regs->r[4];
     /* Output registers */
     bool more;
     int32_t used;
@@ -299,9 +299,9 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *r, void *pw)
 
     /* FIXME: SWI not yet implemented */
 
-    r->r[2] = (int)more;  // .Bool
-    r->r[3] = (int)used;  // .Int
-    r->r[4] = (int)context_out;  // .Int
+    regs->r[2] = (int)more;  // .Bool
+    regs->r[3] = (int)used;  // .Int
+    regs->r[4] = (int)context_out;  // .Int
     return err;
 }
 
@@ -318,7 +318,7 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -335,14 +335,14 @@ _kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    OS_Error *error = (OS_Error *)r->r[0];
-    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[1];
-    OS_Error * buffer = (OS_Error *)r->r[2];
-    int32_t size = (int32_t)r->r[3];
-    char * arg0 = (char *)r->r[4];
-    char * arg1 = (char *)r->r[5];
-    char * arg2 = (char *)r->r[6];
-    char * arg3 = (char *)r->r[7];
+    _kernel_oserror *error = (_kernel_oserror *)regs->r[0];
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[1];
+    _kernel_oserror * buffer = (_kernel_oserror *)regs->r[2];
+    int32_t size = (int32_t)regs->r[3];
+    char * arg0 = (char *)regs->r[4];
+    char * arg1 = (char *)regs->r[5];
+    char * arg2 = (char *)regs->r[6];
+    char * arg3 = (char *)regs->r[7];
 
     /* FIXME: SWI not yet implemented */
 
@@ -362,7 +362,7 @@ _kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -381,22 +381,22 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)r->r[0];
-    char * token = (char *)r->r[1];
-    char * buffer = (char *)r->r[2];
-    int32_t size = (int32_t)r->r[3];
-    char * arg0 = (char *)r->r[4];
-    char * arg1 = (char *)r->r[5];
-    char * arg2 = (char *)r->r[6];
-    char * arg3 = (char *)r->r[7];
+    MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
+    char * token = (char *)regs->r[1];
+    char * buffer = (char *)regs->r[2];
+    int32_t size = (int32_t)regs->r[3];
+    char * arg0 = (char *)regs->r[4];
+    char * arg1 = (char *)regs->r[5];
+    char * arg2 = (char *)regs->r[6];
+    char * arg3 = (char *)regs->r[7];
     /* Output registers */
     char * result;
     int32_t used;
 
     /* FIXME: SWI not yet implemented */
 
-    r->r[2] = (int)result;  // .String
-    r->r[3] = (int)used;  // .Int
+    regs->r[2] = (int)result;  // .String
+    regs->r[3] = (int)used;  // .Int
     return err;
 }
 
@@ -413,7 +413,7 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_CopyError(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_CopyError(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -424,13 +424,13 @@ _kernel_oserror *SWI_CopyError(int number, _kernel_swi_regs *r, void *pw)
      */
 
     /* Input registers */
-    OS_Error *error = (OS_Error *)r->r[0];
+    _kernel_oserror *error = (_kernel_oserror *)regs->r[0];
     /* Output registers */
-    OS_Error *copy;
+    _kernel_oserror *copy;
 
     /* FIXME: SWI not yet implemented */
 
-    r->r[0] = (int)copy;  // OS_Error
+    regs->r[0] = (int)copy;  // _kernel_oserror
     return err;
 }
 
@@ -447,7 +447,7 @@ _kernel_oserror *SWI_CopyError(int number, _kernel_swi_regs *r, void *pw)
  *               Return error_BAD_SWI for out of range SWIs.
  *               Return an error block for a custom error.
  **************************************************************************/
-_kernel_oserror *SWI_Dictionary(int number, _kernel_swi_regs *r, void *pw)
+_kernel_oserror *SWI_Dictionary(int number, _kernel_swi_regs *regs, void *pw)
 {
     _kernel_oserror *err = NULL;
     /*
@@ -461,7 +461,7 @@ _kernel_oserror *SWI_Dictionary(int number, _kernel_swi_regs *r, void *pw)
 
     /* FIXME: SWI not yet implemented */
 
-    r->r[0] = (int)dictionary;  // .Data
+    regs->r[0] = (int)dictionary;  // .Data
     return err;
 }
 
