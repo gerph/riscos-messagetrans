@@ -1,0 +1,10 @@
+# This is an example message file
+TOK1:This value is obtained only for "TOK1".
+TOK2
+TOK3/TOK4:This value is obtained for "TOK2","TOK3" or "TOK4"
+TOK?:This value is obtained for "TOK<not 1,2,3 or 4>"
+ANOTHER:Parameter in R4 = %0, parameter in R5 = %1.
+MENUTITLE:Title of menu
+MENUITEM1:First item in menu
+MENUITEM2:Second item in menu
+MENUITEM3:Third item in menu

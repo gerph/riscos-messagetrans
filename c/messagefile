@@ -1,0 +1,199 @@
+/*******************************************************************
+ * File:        messagefile
+ * Purpose:     Handling of the messagefile structure
+ * Author:      Gerph
+ * Date:        17 Jul 2025
+ ******************************************************************/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "kernel.h"
+
+#include "messagefile.h"
+
+
+/* Define this to debug this file */
+//#define DEBUG
+
+
+#ifdef DEBUG
+#define dprintf if (1) printf
+#else
+#define dprintf if (0) printf
+#endif
+
+/*
+File format
+  <file>      ::=     { <line> }*
+  <line>      ::=     <tokline> | '#' <comment><nl> | <nl>
+  <tokline>   ::=     <token> { '/'<token> | <nl><token> }* : <value><nl>
+  <token>     ::=     <tokchar> { <tokchar> }*
+  <tokchar>   ::=     <char> | <wildcard>
+  <char>      ::=     any character except ',', ')', ':', '?' or '/'
+  <wildcard>  ::=     '?' (matches any character)
+  <comment>   ::=     { <anychar> }*
+  <anychar>   ::=     any character except <nl>
+  <nl>        ::=     character code 10
+  <value>     ::=     { <anychar> | '%0' | '%1' | '%2' | '%3' | '%%' }*
+*/
+
+_kernel_oserror err_InconsistentFileSize = { 0, "Inconsistent file size for message file" };
+
+
+/*************************************************** Gerph *********
+ Function:      messagefile_size
+ Description:   Read the size of a message file
+ Parameters:    filename-> the file to read
+ Returns:       size needed to store the message file, or -1 if not found
+ ******************************************************************/
+int32_t messagefile_size(const char *filename)
+{
+    /* FIXME */
+    FILE *fh;
+    long size;
+    fh = fopen(filename, "rb");
+    if (fh == NULL)
+        return -1;
+
+    fseek(fh, 0, SEEK_END);
+    size = ftell(fh);
+    fclose(fh);
+
+    return (int32_t)size;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      messagefile_load
+ Description:   Load the contents of a file into the messagefile structure
+ Parameters:    filename-> the file to read
+                mfd-> the message file structure we're parsing
+ Returns:       pointer to error, or NULL if ok
+ ******************************************************************/
+_kernel_oserror *messagefile_load(const char *filename, messagefiledata_t *mfd)
+{
+    long read;
+    FILE *fh = fopen(filename, "rb");
+    if (fh == NULL)
+    {
+        return _kernel_last_oserror();
+    }
+    read = fread(mfd->messagefile, 1, mfd->size, fh);
+    if (read + 1 < mfd->size)
+    {
+        /* If we couldn't read the file into the space, we fault it */
+        fclose(fh);
+        return &err_InconsistentFileSize;
+    }
+    mfd->messagefile->data[mfd->size - 1] = '\0'; /* Ensure terminated by 0 */
+    fclose(fh);
+    return NULL;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      messagefile_find
+ Description:   Find a token in a message file
+ Parameters:    mfd-> the message file to find the token in
+                token = the token to locate
+ Returns:       pointer to the start of the token, or NULL if not found
+ ******************************************************************/
+messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
+{
+    messagefilefound_t found;
+    const char *search = mfd->messagefile->data;
+    const char *sot = search; /* Start of token */
+    const char *end = search + mfd->size;
+
+    dprintf("Find: token='%s'\n", token);
+
+    while (search < end)
+    {
+        /* Deal with comments and blank lines */
+        const char *toksearch;
+        char c;
+        sot = search;
+
+        c = *search;
+        if (c == '#')
+        {
+            /* Comment line, so skip */
+            while ((c=*search++) != '\n' && search < end)
+                ; /* All in the while */
+            continue;
+        }
+        if (c == '\n')
+        {
+            continue;
+        }
+
+        while (c != ':')
+        {
+            /* Process the tokens - we need to match against the token supplied */
+            dprintf("  Trying to match at message '%.8s...'\n", search - 1);
+            for (toksearch=token;
+                 search < end && (*toksearch != '\0' && *toksearch != ':') && (*toksearch == *search || *search == '?');
+                 toksearch++, search++)
+                ; /* All in the for */
+
+            if (search >= end)
+                goto fail;
+
+            dprintf("    Terminated at token '%s', message '%.8s...'\n", toksearch, search);
+            /* We found the point at which they diverge */
+            if ((*toksearch == '\0' || *toksearch == ':') && (*search == '/' || *search == '\n' || *search == ':'))
+            {
+                /* They are a match */
+                goto match;
+            }
+            if (*search == '*')
+            {
+                /* They diverged at a multi-character wildcard, so we need to handle */
+                /* FIXME */
+                /* Fail for now */
+            }
+
+            /* Find the end of this token */
+            while ((c=*search++) != '\n' && c != '/' && c != ':' && search < end)
+                ; /* All in the while */
+        }
+        /* We have reached the end of the token list, or the end of the file; skip to next */
+        /* Look for the next token start */
+        if (search >= end)
+            break;
+
+        /* Look for the end of this token line */
+        while ((c=*search++) != '\n' && search < end)
+            ; /* All in the while */
+    }
+
+fail:
+    found.value = NULL;
+    found.len = 0;
+    return found;
+
+match:
+    /* We are pointing at the end of the token that matched - either a / or a : */
+
+    /* Find the start of the value string */
+    while (*search++ != ':' && search < end)
+        ; /* All in the while */
+
+    if (search >= end)
+        goto fail;
+
+    found.value = search;
+
+    /* Now we need to find the length */
+    while (*search++ != '\n' && search < end)
+        ; /* All in the while */
+
+    if (search >= end)
+        goto fail;
+
+    found.len = search - found.value - 1;
+    return found;
+}

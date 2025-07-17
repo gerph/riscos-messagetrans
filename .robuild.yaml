@@ -22,7 +22,14 @@ jobs:
     # Commands which should be executed to perform the build.
     # The build will terminate if any command returns a non-0 return code or an error.
     script:
-      - amu -f Makefile ram  
+      - echo Building test code
+      - amu -f MakefileMFTest
+
+      - echo Running test for makefile tokens
+      - /aif32.MessageFileTest examples.fromprm TOK1 TOK2 TOK3 TOK4 TOK5 UNKNOWN
+
+      - echo Building module
+      - amu -f Makefile ram
 
     # Outputs from the build are defined in artifacts
     # These are a list of artifacts to report directories or files.

@@ -1,0 +1,59 @@
+/*******************************************************************
+ * File:        messagefile
+ * Purpose:     Handling of the messagefile structure
+ * Author:      Gerph
+ * Date:        17 Jul 2025
+ ******************************************************************/
+
+#ifndef MESSAGEFILE_H
+#define MESSAGEFILE_H
+
+#include <stdint.h>
+
+#include "kernel.h"
+
+typedef struct messagefile_s {
+    char data[1];
+} messagefile_t;
+
+
+typedef struct messagefiledata_s {
+    messagefile_t *messagefile;
+    int32_t        size;
+} messagefiledata_t;
+
+
+typedef struct messagefilefound_t {
+    const char *value;
+    int len;
+} messagefilefound_t;
+
+/*************************************************** Gerph *********
+ Function:      messagefile_size
+ Description:   Read the size of a message file
+ Parameters:    filename-> the file to read
+ Returns:       size needed to store the message file, or -1 if not found
+ ******************************************************************/
+int32_t messagefile_size(const char *filename);
+
+
+/*************************************************** Gerph *********
+ Function:      messagefile_load
+ Description:   Load the contents of a file into the messagefile structure
+ Parameters:    filename-> the file to read
+                mfd-> the message file structure we're parsing
+ Returns:       pointer to error, or NULL if ok
+ ******************************************************************/
+_kernel_oserror *messagefile_load(const char *filename, messagefiledata_t *mfd);
+
+
+/*************************************************** Gerph *********
+ Function:      messagefile_find
+ Description:   Find a token in a message file
+ Parameters:    mfd-> the message file to find the token in
+                token = the token to locate
+ Returns:       pointer to the start of the token, or NULL if not found
+ ******************************************************************/
+messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token);
+
+#endif

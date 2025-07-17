@@ -35,8 +35,9 @@ LIBS       =
 CDEFINES   =
 
 # Objects to build, using the format o.<name> (will be varied for build type)
-OBJS       = 			 \
+OBJS       = o.modhead \
              o.module \
+             o.messagefile
 
 
 include CModule
