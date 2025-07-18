@@ -1,0 +1,47 @@
+/*******************************************************************
+ * File:        gstrans
+ * Purpose:     Performing operations with GSTrans for MessageTrans
+ * Author:      Gerph
+ * Date:        18 Jul 2025
+ ******************************************************************/
+
+#ifndef GSTRANS_H
+#define GSTRANS_H
+
+#include <stdint.h>
+
+#include "kernel.h"
+
+/*************************************************** Gerph *********
+ Function:      gstrans_final
+ Description:   Finalise the GSTrans functions
+ Parameters:    none
+ Returns:       none
+ ******************************************************************/
+void gstrans_final(void);
+
+
+/*************************************************** Gerph *********
+ Function:      gstrans_getbuffer
+ Description:   Get a buffer for GSTransing into
+ Parameters:    min = minimum size required
+                newsizep-> where to store the buffer size we got
+ Returns:       pointer to the buffer claimed, or NULL if failed
+ ******************************************************************/
+char *gstrans_getbuffer(int min, int *newsizep);
+
+
+/*************************************************** Gerph *********
+ Function:      gstrans_translate
+ Description:   Perform OS_GSTRans
+ Parameters:    str-> the string to GSTrans
+                buffer-> the buffer to populate
+                bufferlen = the buffer length
+                usedp-> where to store the size used (will be bufferlen if failed)
+ Returns:       pointer to error, or NULL if ok
+ ******************************************************************/
+_kernel_oserror *gstrans_translate(const char *str, char *buffer,
+                                   uint32_t bufferlen, int *usedp);
+
+
+#endif

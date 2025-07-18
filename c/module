@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "kernel.h"
+#include "riscos/NewErrors.h"
 
 #include "modhead.h"
 #include "types.h"
@@ -19,6 +20,7 @@
 #include "descriptor.h"
 #include "tokens.h"
 #include "errorbufs.h"
+#include "gstrans.h"
 
 /* Define this to debug this file */
 //#define DEBUG
@@ -29,6 +31,7 @@
 #else
 #define dprintf if (0) printf
 #endif
+
 
 
 /***************************************************************************
@@ -66,6 +69,7 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
  **************************************************************************/
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
+    gstrans_final();
     dprintf("MessageTrans finalised\n");
     return NULL;
 }
@@ -458,8 +462,8 @@ _kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *regs, void *pw)
 
     if (out_error == NULL)
     {
-        /* FIXME: Get buffer */
-        return err_MessageTransTokenNotFound;
+        /* Get buffer */
+        out_error = errorbufs_allocate();
     }
 
     {
@@ -541,17 +545,49 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
     }
     else
     {
+        int new_size;
+        char *new_buffer = gstrans_getbuffer(size, &new_size);
+        if (new_buffer == NULL)
+            return err_NoMemory;
         err = tokens_substitute(&found,
-                                buffer,
-                                size,
+                                new_buffer,
+                                new_size,
                                 args,
                                 &used);
+        if (err)
+        {
+            if (err->errnum == ErrorNumber_BuffOverflow)
+            {
+                /* It failed with the buffer size given, so try with new size */
+                /* Probably the main way this would fail would be if the size
+                 * of the system variables that were substituted was massively
+                 * longer than their substitution.
+                 */
+                new_buffer = gstrans_getbuffer(used, &new_size);
+                if (new_buffer == NULL)
+                    return err_NoMemory;
+                err = tokens_substitute(&found,
+                                        new_buffer,
+                                        new_size,
+                                        args,
+                                        &used);
+                if (err)
+                {
+                    /* If we got an error at this point we're almost certainly
+                     * stuffed.
+                     */
+                    return err;
+                }
+            }
+        }
+
+        /* new_buffer now has information we want to GSTrans */
+        err = gstrans_translate(new_buffer, buffer, size, &used);
         if (err)
             return err;
         result = buffer;
     }
 
-    /* FIXME: We aren't actually GSTransing this string here */
 
     regs->r[2] = (int)result;  // .String
     regs->r[3] = (int)used - 1;  // .Int

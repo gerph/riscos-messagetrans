@@ -1,0 +1,119 @@
+/*******************************************************************
+ * File:        gstrans
+ * Purpose:     Performing operations with GSTrans for MessageTrans
+ * Author:      Gerph
+ * Date:        18 Jul 2025
+ ******************************************************************/
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#include "swis.h"
+
+#include "gstrans.h"
+
+/* Define this to debug this file */
+//#define DEBUG
+
+
+#ifdef DEBUG
+#define dprintf if (1) printf
+#else
+#define dprintf if (0) printf
+#endif
+
+#define GSTRANS_INCREMENT (256)
+
+static char *tmp_gstransbuffer = NULL;
+static int tmp_gstransbufferlen = 0;
+
+
+/*************************************************** Gerph *********
+ Function:      gstrans_final
+ Description:   Finalise the GSTrans functions
+ Parameters:    none
+ Returns:       none
+ ******************************************************************/
+void gstrans_final(void)
+{
+    if (tmp_gstransbuffer)
+    {
+        free(tmp_gstransbuffer);
+        tmp_gstransbuffer = NULL;
+        tmp_gstransbufferlen = 0;
+    }
+}
+
+/*************************************************** Gerph *********
+ Function:      gstrans_getbuffer
+ Description:   Get a buffer for GSTransing into
+ Parameters:    min = minimum size required
+                newsizep-> where to store the buffer size we got
+ Returns:       pointer to the buffer claimed, or NULL if failed
+ ******************************************************************/
+char *gstrans_getbuffer(int min, int *newsizep)
+{
+    char *old_buffer;
+    char *new_buffer;
+    min += GSTRANS_INCREMENT;
+    if (tmp_gstransbufferlen > min)
+    {
+        min = tmp_gstransbufferlen + GSTRANS_INCREMENT;
+    }
+    new_buffer = malloc(min);
+    if (new_buffer == NULL)
+        return NULL;
+
+    old_buffer = tmp_gstransbuffer;
+    tmp_gstransbuffer = new_buffer;
+    tmp_gstransbufferlen = min;
+    if (newsizep)
+        *newsizep = min;
+
+    if (old_buffer != NULL)
+    {
+        free(old_buffer);
+    }
+    return new_buffer;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      gstrans_translate
+ Description:   Perform OS_GSTRans
+ Parameters:    str-> the string to GSTrans
+                buffer-> the buffer to populate
+                bufferlen = the buffer length
+                usedp-> where to store the size used (will be bufferlen if failed)
+ Returns:       pointer to error, or NULL if ok
+ ******************************************************************/
+_kernel_oserror *gstrans_translate(const char *str, char *buffer,
+                                   uint32_t bufferlen, int *usedp)
+{
+    int32_t used = 0;
+    _kernel_oserror *err;
+
+#ifdef __riscos64
+    err = _swix(OS_GSTrans, _INR(0, 2)|_OUT(2),
+                            str, buffer, bufferlen,
+                            &used);
+    *usedp = used;
+    return err;
+#else
+    uint32_t flags = 0;
+
+    err = _swix(OS_GSTrans, _INR(0, 2)|_OUT(2)|_OUT(_FLAGS),
+                            str, buffer, bufferlen,
+                            &used, &flags);
+    *usedp = used;
+    if (err)
+        return err;
+    if (flags & _C)
+    {
+        *usedp = bufferlen & ~(7u<<29);
+    }
+    return NULL;
+#endif
+}

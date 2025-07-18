@@ -81,11 +81,12 @@ _kernel_oserror *tokens_substitute(messagefilefound_t *found,
         }
     }
     ACCUMULATE('\0');
+    /* Always populate the buffer with the space it would have used */
+    if (usedp)
+        *usedp = (out - buffer);
     if (out <= end)
     {
         /* It fit into their buffer, so we can return success */
-        if (usedp)
-            *usedp = (out - buffer);
         return NULL;
     }
     return err_BufferOverflow;
