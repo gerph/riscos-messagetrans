@@ -22,11 +22,17 @@ jobs:
     # Commands which should be executed to perform the build.
     # The build will terminate if any command returns a non-0 return code or an error.
     script:
-      - echo Building test code
+      - echo Building makefile test code
       - amu -f MakefileMFTest
 
       - echo Running test for makefile tokens
       - /aif32.MessageFileTest examples.fromprm TOK1 TOK2 TOK3 TOK4 TOK5 UNKNOWN
+
+      - echo Building wildcard test code
+      - amu -f MakefileWild
+
+      - echo Running test for wildcards
+      - /aif32.WildcardTest
 
       - echo Building module
       - amu -f Makefile ram

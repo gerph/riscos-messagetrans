@@ -149,12 +149,7 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
                 /* They are a match */
                 goto match;
             }
-            if (*search == '*')
-            {
-                /* They diverged at a multi-character wildcard, so we need to handle */
-                /* FIXME */
-                /* Fail for now */
-            }
+            /* Note: The MessageTrans file format doesn't actually support multi-char wildcards */
 
             /* Find the end of this token */
             while ((c=*search++) != '\n' && c != '/' && c != ':' && search < end)

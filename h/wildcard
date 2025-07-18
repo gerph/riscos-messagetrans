@@ -1,0 +1,24 @@
+/*******************************************************************
+ * File:     wildcard
+ * Purpose:  Wildcard matching for messagetrans
+ * Author:   Justin Fletcher
+ * Date:     14 Jun 2007
+ ******************************************************************/
+
+#ifndef WILDCARD_H
+#define WILDCARD_H
+
+/*************************************************** Gerph *********
+ Function:     wildmatch_mt
+ Description:  Check whether we match a wildcard (case sensitive,
+               for messagetrans)
+ Parameters:   wild-> the wildcard to match with, terminated by
+                      0, 10, 13, ':'
+               str-> the string to match, terminated by
+                     0, 10, 13, ':', '/'
+               end-> where to stop matching
+ Returns:      1 if matched, 0 if no match
+ ******************************************************************/
+int wildmatch_mt(const char *wild, const char *str, const char *end);
+
+#endif
