@@ -1,0 +1,92 @@
+/*******************************************************************
+ * File:        tokens
+ * Purpose:     Token expansion in the MessageTrans file text
+ * Author:      Gerph
+ * Date:        18 Jul 2025
+ ******************************************************************/
+
+#include <stdlib.h>
+#include <stdint.h>
+
+#include "kernel.h"
+
+#include "modhead.h"
+#include "messagefile.h"
+#include "tokens.h"
+
+
+/*************************************************** Gerph *********
+ Function:      tokens_substitute
+ Description:   Perform substitution of the %0-3 values in the message
+ Parameters:    found-> the token string to expand
+                buffer-> the buffer to populate
+                size = the size of the buffer
+                args-> the args to use
+                usedp-> where to store the length written
+ Returns:       pointer to an error, or NULL if ok
+ ******************************************************************/
+_kernel_oserror *tokens_substitute(messagefilefound_t *found,
+                                   char *buffer,
+                                   int32_t size,
+                                   const char **args,
+                                   int32_t *usedp)
+{
+#define ACCUMULATE(c) do { if (out < end) *out++ = (c); else out++; } while (0)
+    const char *msg = found->value;
+    char *out = buffer;
+    int len = found->len;
+    char *end = buffer + size;
+    int i;
+
+    for (i=0; i<len; i++)
+    {
+        char c = msg[i];
+        if (c == '%')
+        {
+            i++;
+            c = msg[i];
+            if (c == '\0')
+            {
+                ACCUMULATE('%');
+            }
+            else if (c == '0' || c == '1' || c == '2' || c == '3')
+            {
+                /* Expand */
+                int n = c - '0';
+                const char *arg = args[n];
+                if (arg < (const char *)0x8000)
+                {
+                    ACCUMULATE('%');
+                    ACCUMULATE(c);
+                }
+                else
+                {
+                    /* We can actually expand to the argument */
+                    while (*arg != '\0' && *arg != '\n' && *arg != '\r')
+                    {
+                        ACCUMULATE(*arg);
+                        arg++;
+                    }
+                }
+            }
+            else
+            {
+                ACCUMULATE('%');
+                ACCUMULATE(c);
+            }
+        }
+        else
+        {
+            ACCUMULATE(c);
+        }
+    }
+    ACCUMULATE('\0');
+    if (out <= end)
+    {
+        /* It fit into their buffer, so we can return success */
+        if (usedp)
+            *usedp = (out - buffer);
+        return NULL;
+    }
+    return err_BufferOverflow;
+}

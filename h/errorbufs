@@ -1,0 +1,22 @@
+/*******************************************************************
+ * File:        errorbufs
+ * Purpose:     Buffers for errors, to return to user
+ * Author:      Gerph
+ * Date:        18 Jul 2025
+ ******************************************************************/
+
+#ifndef ERRORBUFS_H
+#define ERRORBUFS_H
+
+#include "kernel.h"
+
+
+/*************************************************** Gerph *********
+ Function:      errorbufs_allocate
+ Description:   Allocate an error buffer for use
+ Parameters:    none
+ Returns:       pointer to error buffer to use
+ ******************************************************************/
+_kernel_oserror *errorbufs_allocate(void);
+
+#endif

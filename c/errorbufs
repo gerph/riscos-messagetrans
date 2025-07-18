@@ -1,0 +1,35 @@
+/*******************************************************************
+ * File:        errorbufs
+ * Purpose:     Buffers for errors, to return to user
+ * Author:      Gerph
+ * Date:        18 Jul 2025
+ ******************************************************************/
+
+#include <stdlib.h>
+#include "kernel.h"
+
+#define MAXERRBUFS (16)
+
+static _kernel_oserror errorbufs[MAXERRBUFS];
+static int current = 0;
+
+
+/*************************************************** Gerph *********
+ Function:      errorbufs_allocate
+ Description:   Allocate an error buffer for use
+ Parameters:    none
+ Returns:       pointer to error buffer to use
+ ******************************************************************/
+_kernel_oserror *errorbufs_allocate(void)
+{
+    _kernel_oserror *err = &errorbufs[current];
+    if (current == MAXERRBUFS - 1)
+    {
+        current = 0;
+    }
+    else
+    {
+        current++;
+    }
+    return err;
+}

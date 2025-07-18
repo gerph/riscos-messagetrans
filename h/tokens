@@ -1,0 +1,34 @@
+/*******************************************************************
+ * File:        tokens
+ * Purpose:     Token expansion in the MessageTrans file text
+ * Author:      Gerph
+ * Date:        18 Jul 2025
+ ******************************************************************/
+
+#ifndef TOKENS_H
+#define TOKENS_H
+
+#include <stdint.h>
+
+#include "kernel.h"
+
+#include "messagefile.h"
+
+
+/*************************************************** Gerph *********
+ Function:      tokens_substitute
+ Description:   Perform substitution of the %0-3 values in the message
+ Parameters:    found-> the token string to expand
+                buffer-> the buffer to populate
+                size = the size of the buffer
+                args-> the args to use
+                usedp-> where to store the length written
+ Returns:       pointer to an error, or NULL if ok
+ ******************************************************************/
+_kernel_oserror *tokens_substitute(messagefilefound_t *found,
+                                   char *buffer,
+                                   int32_t size,
+                                   const char **args,
+                                   int32_t *usedp);
+
+#endif

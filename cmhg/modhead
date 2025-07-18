@@ -45,10 +45,11 @@ error-base: &ac0    ; reservd up to &B00
 ; space. The number is optional, and if omitted will be allocated from the
 ; error chunk.
 error-identifiers: \
+        err_BufferOverflow( &1e5, "BufferOverflow:Not enough space in buffer for expansion"),
         err_MessageTransSyntaxDescriptor( &ac0, "SyntaxDescriptor:Bad MessageTrans descriptor"),
         err_MessageTransSyntaxCorrupt( &ac0, "Syntax:Corrupt MessageTrans descriptor"),
-        err_MessageTransFileOpen( &ac1, "MessageTransFileOpen"),
-        err_MessageTransTokenNotFound( &ac2, "MessageTransTokenNotFound"),
+        err_MessageTransFileOpen( &ac1, "FileOpen:Could not open message file"),
+        err_MessageTransTokenNotFound( &ac2, "TokenNotFound"),
         err_MessageTransRecurse( &ac3, "MessageTransRecurse")
 
 ; When the module is initialised, this routine will be entered. You should

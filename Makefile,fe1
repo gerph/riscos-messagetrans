@@ -38,7 +38,9 @@ CDEFINES   =
 OBJS       = o.modhead \
              o.messagefile \
              o.wildcard \
-             o.descriptor\
+             o.descriptor \
+             o.tokens \
+             o.errorbufs \
              o.module
 
 

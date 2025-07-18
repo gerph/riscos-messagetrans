@@ -13,6 +13,7 @@
 #include "kernel.h"
 
 #include "messagefile.h"
+#include "wildcard.h"
 
 
 /* Define this to debug this file */
@@ -142,7 +143,8 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
 
             dprintf("    Terminated at token '%s', message '%.8s...'\n", toksearch, search);
             /* We found the point at which they diverge */
-            if ((*toksearch == '\0' || *toksearch == ':') && (*search == '/' || *search == '\n' || *search == ':'))
+            if ((*toksearch == '\0' || *toksearch == '\n' || *toksearch == '\r' ||
+                 *toksearch == ':') && (*search == '/' || *search == '\n' || *search == ':'))
             {
                 /* They are a match */
                 goto match;

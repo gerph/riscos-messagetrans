@@ -9,11 +9,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "kernel.h"
+
 #include "modhead.h"
 #include "types.h"
-
+#include "messagefile.h"
+#include "descriptor.h"
+#include "tokens.h"
+#include "errorbufs.h"
 
 /* Define this to debug this file */
 //#define DEBUG
@@ -41,7 +46,7 @@
 _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 {
     _kernel_oserror *err = NULL;
-    dprintf("Messagetrans initialised\n");
+    dprintf("MessageTrans initialised\n");
     return err;
 }
 
@@ -61,7 +66,7 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
  **************************************************************************/
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
-    dprintf("Messagetrans finalised\n");
+    dprintf("MessageTrans finalised\n");
     return NULL;
 }
 
@@ -90,12 +95,17 @@ _kernel_oserror *SWI_FileInfo(int number, _kernel_swi_regs *regs, void *pw)
      */
 
     /* Input registers */
-    char * file_name = (char *)regs->r[1];
+    const char * file_name = (const char *)regs->r[1];
     /* Output registers */
     MessageTrans_FileFlags flags;
     int32_t size;
 
-    /* FIXME: SWI not yet implemented */
+    size = messagefile_size(file_name);
+    if (size == -1)
+        return err_MessageTransFileOpen;
+
+    /* FIXME: We do not support direct access yet */
+    flags = 0;
 
     regs->r[0] = (int)flags;  // MessageTrans_FileFlags
     regs->r[2] = (int)size;  // .Int
@@ -130,8 +140,27 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *regs, void *pw)
     MessageTrans_ControlBlock * cb = (MessageTrans_ControlBlock *)regs->r[0];
     char * file_name = (char *)regs->r[1];
     char * buffer = (char *)regs->r[2];
+    messagefiledata_t mfd;
+    int32_t size;
+
+    /* Ensure that if we return, the magic is NEVER valid */
+    cb->magic = 0;
 
     /* FIXME: SWI not yet implemented */
+    /* The API doesn't supply the buffer size, so actually we'll just have
+     * to assume that it's correct.
+     */
+    size = messagefile_size(file_name);
+    if (size == -1)
+        return err_MessageTransFileOpen;
+
+    mfd.messagefile = (messagefile_t*)buffer;
+    mfd.size = size;
+    err = messagefile_load(file_name, &mfd);
+    if (err)
+        return err;
+
+    err = descriptor_populate(cb, &mfd);
 
     return err;
 }
@@ -169,21 +198,48 @@ _kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *regs, void *pw)
 
     /* Input registers */
     MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
-    char * token = (char *)regs->r[1];
+    const char * token = (const char *)regs->r[1];
     char * buffer = (char *)regs->r[2];
     int32_t size = (int32_t)regs->r[3];
-    char * arg0 = (char *)regs->r[4];
-    char * arg1 = (char *)regs->r[5];
-    char * arg2 = (char *)regs->r[6];
-    char * arg3 = (char *)regs->r[7];
+    const char * args[4];
     /* Output registers */
-    char * result;
+    const char * result;
     int32_t used;
+    messagefiledata_t *mfd;
+    messagefilefound_t found;
 
-    /* FIXME: SWI not yet implemented */
+    args[0] = (const char *)regs->r[4];
+    args[1] = (const char *)regs->r[5];
+    args[2] = (const char *)regs->r[6];
+    args[3] = (const char *)regs->r[7];
+
+    err = descriptor_check(cb, &mfd);
+    if (err)
+        return err;
+    found = messagefile_find(mfd, token);
+    if (found.value == NULL)
+        return err_MessageTransTokenNotFound;
+
+    if (buffer == NULL)
+    {
+        result = found.value;
+        used = found.len;
+    }
+    else
+    {
+        err = tokens_substitute(&found,
+                                buffer,
+                                size,
+                                args,
+                                &used);
+        if (err)
+            return err;
+        result = buffer;
+    }
 
     regs->r[2] = (int)result;  // .String
-    regs->r[3] = (int)used;  // .Int
+    regs->r[3] = (int)used - 1;  // .Int
+    regs->r[1] = regs->r[2] + regs->r[3];
     return err;
 }
 
@@ -220,6 +276,11 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
     int32_t size = (int32_t)regs->r[3];
     /* Output registers */
     int32_t used;
+    messagefiledata_t *mfd;
+
+    err = descriptor_check(cb, &mfd);
+    if (err)
+        return err;
 
     /* FIXME: SWI not yet implemented */
 
@@ -251,6 +312,11 @@ _kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *regs, void *pw)
 
     /* Input registers */
     MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
+    messagefiledata_t *mfd;
+
+    err = descriptor_check(cb, &mfd);
+    if (err)
+        return err;
 
     /* FIXME: SWI not yet implemented */
 
@@ -293,11 +359,46 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *p
     int32_t size = (int32_t)regs->r[3];
     int32_t context = (int32_t)regs->r[4];
     /* Output registers */
-    bool more;
+    const char * more;
     int32_t used;
     int32_t context_out;
+    messagefiledata_t *mfd;
+    messagefilefound_t found;
 
-    /* FIXME: SWI not yet implemented */
+    err = descriptor_check(cb, &mfd);
+    if (err)
+        return err;
+    found = messagefile_findindex(mfd, token, context);
+
+    if (found.value == NULL)
+    {
+        more = 0;
+        used = 0;
+        context_out = 0;
+    }
+    else
+    {
+        if (buffer != NULL)
+        {
+            more = buffer; /* preserved when found */
+            if (size < found.len)
+            {
+                err = err_BufferOverflow;
+            }
+            else
+            {
+                memcpy(buffer, found.value, found.len);
+                buffer[found.len] = '\0';
+            }
+        }
+        else
+        {
+            /* No copy variant */
+            more = found.value;
+        }
+        used = found.len;
+        context_out = context + 1;
+    }
 
     regs->r[2] = (int)more;  // .Bool
     regs->r[3] = (int)used;  // .Int
@@ -337,14 +438,42 @@ _kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *regs, void *pw)
     /* Input registers */
     _kernel_oserror *error = (_kernel_oserror *)regs->r[0];
     MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[1];
-    _kernel_oserror * buffer = (_kernel_oserror *)regs->r[2];
+    _kernel_oserror * out_error = (_kernel_oserror *)regs->r[2];
     int32_t size = (int32_t)regs->r[3];
-    char * arg0 = (char *)regs->r[4];
-    char * arg1 = (char *)regs->r[5];
-    char * arg2 = (char *)regs->r[6];
-    char * arg3 = (char *)regs->r[7];
+    const char * args[4];
+    messagefiledata_t *mfd;
+    messagefilefound_t found;
 
-    /* FIXME: SWI not yet implemented */
+    args[0] = (const char *)regs->r[4];
+    args[1] = (const char *)regs->r[5];
+    args[2] = (const char *)regs->r[6];
+    args[3] = (const char *)regs->r[7];
+
+    err = descriptor_check(cb, &mfd);
+    if (err)
+        return err;
+    found = messagefile_find(mfd, error->errmess);
+    if (found.value == NULL)
+        return err_MessageTransTokenNotFound;
+
+    if (out_error == NULL)
+    {
+        /* FIXME: Get buffer */
+        return err_MessageTransTokenNotFound;
+    }
+
+    {
+        char *buffer = out_error->errmess;
+        out_error->errnum = error->errnum;
+        err = tokens_substitute(&found,
+                                buffer,
+                                size - 4,
+                                args,
+                                NULL);
+        if (err)
+            return err;
+        err = out_error;
+    }
 
     return err;
 }
@@ -382,21 +511,50 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
 
     /* Input registers */
     MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
-    char * token = (char *)regs->r[1];
+    const char * token = (const char *)regs->r[1];
     char * buffer = (char *)regs->r[2];
     int32_t size = (int32_t)regs->r[3];
-    char * arg0 = (char *)regs->r[4];
-    char * arg1 = (char *)regs->r[5];
-    char * arg2 = (char *)regs->r[6];
-    char * arg3 = (char *)regs->r[7];
+    const char * args[4];
     /* Output registers */
-    char * result;
+    const char * result;
     int32_t used;
+    messagefiledata_t *mfd;
+    messagefilefound_t found;
 
-    /* FIXME: SWI not yet implemented */
+    args[0] = (const char *)regs->r[4];
+    args[1] = (const char *)regs->r[5];
+    args[2] = (const char *)regs->r[6];
+    args[3] = (const char *)regs->r[7];
+
+    err = descriptor_check(cb, &mfd);
+    if (err)
+        return err;
+    found = messagefile_find(mfd, token);
+    if (found.value == NULL)
+        return err_MessageTransTokenNotFound;
+
+    if (buffer == NULL)
+    {
+        /* No GSTrans performed - we just return the pointer to the found value */
+        result = found.value;
+        used = found.len;
+    }
+    else
+    {
+        err = tokens_substitute(&found,
+                                buffer,
+                                size,
+                                args,
+                                &used);
+        if (err)
+            return err;
+        result = buffer;
+    }
+
+    /* FIXME: We aren't actually GSTransing this string here */
 
     regs->r[2] = (int)result;  // .String
-    regs->r[3] = (int)used;  // .Int
+    regs->r[3] = (int)used - 1;  // .Int
     return err;
 }
 
@@ -415,7 +573,6 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
  **************************************************************************/
 _kernel_oserror *SWI_CopyError(int number, _kernel_swi_regs *regs, void *pw)
 {
-    _kernel_oserror *err = NULL;
     /*
      * MessageTrans_CopyError - Copies an error into one of the MessageTrans internal buffers
      *
@@ -428,10 +585,11 @@ _kernel_oserror *SWI_CopyError(int number, _kernel_swi_regs *regs, void *pw)
     /* Output registers */
     _kernel_oserror *copy;
 
-    /* FIXME: SWI not yet implemented */
+    copy = errorbufs_allocate();
+    copy->errnum = error->errnum;
+    strcpy(copy->errmess, error->errmess);
 
-    regs->r[0] = (int)copy;  // _kernel_oserror
-    return err;
+    return copy;
 }
 
 
