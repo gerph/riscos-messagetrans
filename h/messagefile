@@ -56,4 +56,15 @@ _kernel_oserror *messagefile_load(const char *filename, messagefiledata_t *mfd);
  ******************************************************************/
 messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token);
 
+/*************************************************** Gerph *********
+ Function:      messagefile_findindex
+ Description:   Find a token in a message file by its index
+ Parameters:    mfd-> the message file to find the token in
+                wild = wildcard to match
+                index = the index to locate
+ Returns:       pointer to the start of the token, or NULL if not found
+ ******************************************************************/
+messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wild, int index);
+
+
 #endif

@@ -105,7 +105,6 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
 {
     messagefilefound_t found;
     const char *search = mfd->messagefile->data;
-    const char *sot = search; /* Start of token */
     const char *end = search + mfd->size;
 
     dprintf("Find: token='%s'\n", token);
@@ -115,7 +114,6 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
         /* Deal with comments and blank lines */
         const char *toksearch;
         char c;
-        sot = search;
 
         c = *search;
         if (c == '#')
@@ -149,7 +147,7 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
                 /* They are a match */
                 goto match;
             }
-            /* Note: The MessageTrans file format doesn't actually support multi-char wildcards */
+            /* Note: The MessageTrans file format doesn't support multi-char wildcards */
 
             /* Find the end of this token */
             while ((c=*search++) != '\n' && c != '/' && c != ':' && search < end)
@@ -190,5 +188,92 @@ match:
         goto fail;
 
     found.len = search - found.value - 1;
+    return found;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      messagefile_findindex
+ Description:   Find a token in a message file by its index
+ Parameters:    mfd-> the message file to find the token in
+                wild = wildcard to match
+                index = the index to locate
+ Returns:       pointer to the start of the token, or NULL if not found
+ ******************************************************************/
+messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wild, int index)
+{
+    messagefilefound_t found;
+    const char *search = mfd->messagefile->data;
+    const char *sot; /* Start of token */
+    const char *end = search + mfd->size;
+
+    if (wild && strcmp(wild, "*")==0)
+        wild = NULL;
+
+    dprintf("FindIndex: index='%i', wildcard='%s'\n", index, wild ? wild : "*");
+
+    while (search < end)
+    {
+        /* Deal with comments and blank lines */
+        char c;
+
+        c = *search;
+        if (c == '#')
+        {
+            /* Comment line, so skip */
+            while ((c=*search++) != '\n' && search < end)
+                ; /* All in the while */
+            continue;
+        }
+        if (c == '\n')
+        {
+            continue;
+        }
+
+        while (c != ':' && search < end)
+        {
+            /* Process the tokens - we need to locate the right one */
+            dprintf("  Trying to match at message '%.8s...'\n", search - 1);
+            sot = search;
+
+            /* Find the end of this token */
+            while ((c=*search++) != '\n' && c != '/' && c != ':' && search < end)
+                ; /* All in the while */
+
+            if (search >= end)
+                goto fail;
+
+            if (wild != NULL && !wildmatch_mt(wild, sot, search))
+            {
+                /* Not a match, so don't affect the index */
+                continue;
+            }
+
+            if (index <= 0)
+                goto match;
+            index--;
+        }
+        /* We have reached the end of the token list, or the end of the file; skip to next */
+        /* Look for the next token start */
+        if (search >= end)
+            break;
+
+        /* Look for the end of this token line */
+        while ((c=*search++) != '\n' && search < end)
+            ; /* All in the while */
+    }
+
+fail:
+    found.value = NULL;
+    found.len = 0;
+    return found;
+
+match:
+    /* We are pointing at the end of the token that matched - either a / or a : */
+    if (search >= end)
+        goto fail;
+
+    found.value = sot;
+    found.len = search - sot - 1;
     return found;
 }

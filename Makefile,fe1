@@ -37,7 +37,8 @@ CDEFINES   =
 # Objects to build, using the format o.<name> (will be varied for build type)
 OBJS       = o.modhead \
              o.module \
-             o.messagefile
+             o.messagefile \
+             o.wildcard
 
 
 include CModule

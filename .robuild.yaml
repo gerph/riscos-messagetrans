@@ -25,8 +25,11 @@ jobs:
       - echo Building makefile test code
       - amu -f MakefileMFTest
 
-      - echo Running test for makefile tokens
+      - echo Running test for makefile token lookup
       - /aif32.MessageFileTest examples.fromprm TOK1 TOK2 TOK3 TOK4 TOK5 UNKNOWN
+
+      - echo Running test for makefile token enumeration
+      - /aif32.MessageFileTest examples.fromprm TOK*
 
       - echo Building wildcard test code
       - amu -f MakefileWild
