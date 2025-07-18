@@ -28,15 +28,15 @@
 /* Types */
 
 typedef struct MessageTrans_ControlBlock {
-    uint32_t a;
-    uint32_t b;
-    uint32_t c;
-    uint32_t d;
+    uint32_t magic;
+    uint32_t size;
+    void *   messagefile;   /* 4 bytes on RISC OS 32; 8 bytes on RISC OS 64 */
+#ifndef __riscos64
+    uint32_t UNUSED;        /* Only available on RISC OS 32 */
+#endif
 } MessageTrans_ControlBlock;
 
 typedef uint32_t MessageTrans_FileFlags;
-
-
 
 
 #endif

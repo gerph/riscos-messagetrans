@@ -1,0 +1,48 @@
+/*******************************************************************
+ * File:        descriptor
+ * Purpose:     Management of the MessageFileDescriptor
+ * Author:      Gerph
+ * Date:        18 Jul 2025
+ *
+ * We have a separation of the descriptor (the thing that the user
+ * of the module provides us with) and the message data that it
+ * refers to. This allows us to:
+ *
+ *  - provide alternative implementations of the message data
+ *    lookup functions.
+ *  - proxy the message descriptor in the case of SVC stack lookups
+ *    (one of the MessageTrans bugs).
+ *  - separate the validation of the user block from the processing
+ *    of the message file data.
+ *
+ ******************************************************************/
+
+#ifndef DESCRIPTOR_H
+#define DESCRIPTOR_H
+
+#include "kernel.h"
+
+#include "types.h"
+#include "messagefile.h"
+
+/*************************************************** Gerph *********
+ Function:      descriptor_check
+ Description:   Check that the descriptor is valid, and convert to message file pointer
+ Parameters:    md-> the message descriptor
+                mfdp-> the message file data reference
+ Returns:       none
+ ******************************************************************/
+_kernel_oserror *descriptor_check(MessageTrans_ControlBlock *md,
+                                  messagefiledata_t **mfdp);
+
+/*************************************************** Gerph *********
+ Function:      descriptor_populate
+ Description:   Populate a descriptor for a messagefile
+ Parameters:    md-> the message descriptor
+                mfdp-> the message file data reference
+ Returns:       none
+ ******************************************************************/
+_kernel_oserror *descriptor_populate(MessageTrans_ControlBlock *md,
+                                     messagefiledata_t *mfd);
+
+#endif

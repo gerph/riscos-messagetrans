@@ -18,8 +18,8 @@ typedef struct messagefile_s {
 
 
 typedef struct messagefiledata_s {
-    messagefile_t *messagefile;
     int32_t        size;
+    messagefile_t *messagefile;
 } messagefiledata_t;
 
 
