@@ -7,6 +7,7 @@
 
 
 Group: MessageTrans (Finalisation)
+Replace: expect/pymodules/messagetrans/error_replacements
 
 Test: Kill module
 Command: $TOOL --load-internal-modules bin/messagetrans "X"
@@ -14,6 +15,7 @@ Expect: expect/pymodules/messagetrans/kill
 
 
 Group: MessageTrans (Full mode)
+Replace: expect/pymodules/messagetrans/error_replacements
 
 Test: File info
 Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "itestdata.messages.testfile"

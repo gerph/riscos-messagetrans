@@ -1,16 +1,4 @@
 Attempting OpenFile
 Open OK
 MakeMenus
-Complete. Used buffer = 256
-Title:      # Content fo
-TColour:    FG: 114 / BG: 32 
-MColour:    FG: 97  / BG: 32 
-Size:       Width: 1970169197 / Height: 1953059850 / Gap: 1295672684
-  Item:       X -1:an item    [FG: 13 / BG: 6]
-    Title:      Exception: Data abort
-  r0  = &0a656c74, r1  = &0a656c74, r2  = &00000004, r3  = &0000000c
-  r4  = &69542079, r5  = &6d657449, r6  = &00000000, r7  = &00000000
-  r8  = &00000000, r9  = &04800cfc, r10 = &0480124d, r11 = &00000000
-  r12 = &04800e14, sp  = &048011b4, lr  = &0480086c, pc  = &0480088c
-  CPSR= &80000010 : USR-32 ARM fi ae qvczN
-Error: Internal error: Abort on data transfer at &0480088c (DA 'Utility executables': Function menu_show_header+&2c) (read at &0a656c90, unknown memory) (Error number &80000002)
+Error: MESSAGE (Error number &ac2)

@@ -26,8 +26,6 @@
 #include "messagefile.h"
 #include "modhead.h"
 
-#define MAGIC (0xfeedb007u)
-
 /* Define this to debug this file */
 //#define DEBUG
 
@@ -37,6 +35,43 @@
 #else
 #define dprintf if (0) printf
 #endif
+
+
+/* Regular control block magic */
+#define MAGIC               (0x88118811u)
+/* Proxy control block magic */
+#define MAGIC_PROXY         (0x88119922u)
+/* Control block which is unlinked */
+#define MAGIC_NASCENT       (0x88119921u)
+
+
+/* When a Proxy control block is used, this has a reference to the real
+   control block. This is necessary because some clients have created the
+   message file control block on the SVC stack, rather than in the RMA
+   as documented. This causes problems for the MessageTrans module as
+   it means that memory may be leaked, or the module may reference memory
+   which no longer exists when it tries to use the region. This is less
+   of an issue for this implementation of the MessageTrans module, but
+   was catastrophic for the assembler version of the MessageTrans module.
+ */
+typedef struct MessageTrans_ControlBlockProxied {
+    MessageTrans_ControlBlock cb; /* Regular magic or MAGIC_NASCENT */
+    struct MessageTrans_ControlBlockProxied *next;
+} MessageTrans_ControlBlockProxied;
+
+typedef struct MessageTrans_ControlBlockProxy {
+    uint32_t magic; /* MAGIC_PROXY */
+    MessageTrans_ControlBlockProxied *real_cb;
+#ifdef __riscos64
+    uint32_t UNUSED;
+#else
+    uint32_t UNUSED1;
+    uint32_t UNUSED2;
+#endif
+} MessageTrans_ControlBlockProxy;
+
+
+static MessageTrans_ControlBlockProxied *our_chain;
 
 
 /*************************************************** Gerph *********
@@ -56,12 +91,30 @@ _kernel_oserror *descriptor_check(MessageTrans_ControlBlock *md,
         return err_MessageTransSyntaxDescriptor;
 
     dprintf("DescriptorCheck: magic       = &%08x\n", md->magic);
-    dprintf("                 messagefile = %p\n", md->messagefile);
-    dprintf("                 size        = &%08x\n", md->size);
 
     /* Check if it is a descriptor */
+    if (md->magic == MAGIC_PROXY)
+    {
+        MessageTrans_ControlBlockProxy *proxy = (MessageTrans_ControlBlockProxy *)md;
+        dprintf("                 proxy to    = %p\n", proxy->real_cb);
+
+        /* Proxy descriptor, so we need to bounce to the actual descriptor
+         * after a check of the parameters.
+         */
+        if ((((intptr_t)proxy->real_cb) & 3) != 0)
+            return err_MessageTransSyntaxCorrupt;
+
+        if (((intptr_t)proxy->real_cb) < (intptr_t)0x8000)
+            return err_MessageTransSyntaxCorrupt;
+
+        return descriptor_check((MessageTrans_ControlBlock *)proxy->real_cb, mfdp);
+    }
+
     if (md->magic != MAGIC)
         return err_MessageTransSyntaxDescriptor;
+
+    dprintf("                 messagefile = %p\n", md->messagefile);
+    dprintf("                 size        = &%08x\n", md->size);
 
     /* Check the message file and size */
     if ((((intptr_t)md->messagefile) & 3) != 0)
@@ -107,4 +160,126 @@ _kernel_oserror *descriptor_populate(MessageTrans_ControlBlock *md,
     md->UNUSED = 0;
 #endif
     return NULL;
+}
+
+/*************************************************** Gerph *********
+ Function:      descriptor_createproxy
+ Description:   Create a new proxy descriptor (RMA allocated descriptor and data)
+ Parameters:    none
+ Returns:       pointer to the space allocated for the proxy descriptor (unlinked)
+ ******************************************************************/
+MessageTrans_ControlBlock *descriptor_createproxy(void)
+{
+    MessageTrans_ControlBlockProxied *pcb;
+    pcb = malloc(sizeof(MessageTrans_ControlBlockProxied));
+    if (pcb == NULL)
+        return NULL;
+    pcb->cb.magic = MAGIC_NASCENT;
+    pcb->cb.messagefile = NULL;
+    pcb->cb.size = 0;
+    pcb->next = NULL;
+    return &pcb->cb;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      descriptor_destroy
+ Description:   Destroy a descriptor, unlinking or freeing if necessary
+ Parameters:    cb-> control block we are destroying
+ Returns:       pointer to error, or NULL if ok.
+ ******************************************************************/
+_kernel_oserror *descriptor_destroy(MessageTrans_ControlBlock *cb)
+{
+    if (cb->magic == MAGIC_NASCENT)
+    {
+        /* This is a stub which hasn't been linked to anything yet */
+        cb->magic = 0;
+        free(cb);
+    }
+    else if (cb->magic == MAGIC_PROXY)
+    {
+        MessageTrans_ControlBlockProxy *pcb = (MessageTrans_ControlBlockProxy *)cb;
+        MessageTrans_ControlBlockProxied *real_cb = pcb->real_cb;
+        MessageTrans_ControlBlockProxied **lastp = &our_chain;
+        cb->magic = 0;
+        while (*lastp && real_cb != NULL)
+        {
+            MessageTrans_ControlBlockProxied *this_cb = *lastp;
+            if (this_cb == real_cb)
+            {
+                /* We've found the control block in our chain, unlink it */
+                *lastp = this_cb->next;
+
+                /* Invalidated it */
+                this_cb->cb.magic = 0;
+
+                /* We need to free the data in the real control block */
+                free(real_cb->cb.messagefile);
+                this_cb->cb.messagefile = NULL;
+
+                free(this_cb);
+                break;
+            }
+            lastp = &this_cb->next;
+        }
+        /* FIXME: Decide whether we fault the inconsistent structure ? */
+    }
+    else if (cb->magic == MAGIC)
+    {
+        cb->magic = 0;
+    }
+    return NULL;
+}
+
+
+
+/*************************************************** Gerph *********
+ Function:      descriptor_populateproxy
+ Description:   Populate a descriptor for another descriptor
+ Parameters:    md-> the message descriptor
+                pmd-> the proxied message descriptor
+ Returns:       pointer to error, or NULL if ok.
+ ******************************************************************/
+_kernel_oserror *descriptor_populateproxy(MessageTrans_ControlBlock *md,
+                                          MessageTrans_ControlBlock *pmd)
+{
+    MessageTrans_ControlBlockProxy *proxy = (MessageTrans_ControlBlockProxy *)md;
+    MessageTrans_ControlBlockProxied *real_cb = (MessageTrans_ControlBlockProxied *)pmd;
+
+    /* Check the descriptor location */
+    if (((intptr_t)md) < 0x8000)
+        return err_MessageTransSyntaxDescriptor;
+    if ((((intptr_t)md) & 3) != 0)
+        return err_MessageTransSyntaxDescriptor;
+
+    proxy->magic = MAGIC_PROXY;
+    proxy->real_cb = real_cb;
+
+    /* Link the proxy into our chain */
+    real_cb->next = our_chain;
+    our_chain = real_cb;
+    return NULL;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      descriptor_final
+ Description:   Finalise the descriptors, freeing all our space
+ Parameters:    none
+ Returns:       none
+ ******************************************************************/
+void descriptor_final(void)
+{
+    dprintf("Descriptor finalise\n");
+    while (our_chain)
+    {
+        MessageTrans_ControlBlockProxied *pcb = our_chain;
+
+        dprintf("  free proxied at %p\n", pcb);
+        our_chain = pcb->next;
+        free(pcb->cb.messagefile);
+        pcb->cb.messagefile = NULL;
+        pcb->cb.magic = 0;
+        free(pcb);
+    }
 }

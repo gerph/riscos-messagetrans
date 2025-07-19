@@ -13,6 +13,7 @@ fi
 
 sed -E \
     -e "s!Expect: expect/pymodules/messagetrans!Expect: expect/messagetrans!" \
+    -e "s!Replace: expect/pymodules/messagetrans!Replace: expect/messagetrans!" \
     -e "s!\\\$TOOL --load-internal-modules!\$TOOL!" \
     -e "s!\\\$TOOL --config messagetrans.support=[^ ]*!\$TOOL!" \
     -e "s!\\\$TOOL!\$TOOL --quiet!" \
