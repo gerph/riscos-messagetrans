@@ -57,6 +57,7 @@ jobs:
     # Commands which should be executed to perform the build.
     # The build will terminate if any command returns a non-0 return code or an error.
     script:
+      - PyromaniacDebug traceblock
 EOM
 
 # Load the module
