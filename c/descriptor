@@ -19,6 +19,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "descriptor.h"
 #include "types.h"
@@ -26,6 +27,16 @@
 #include "modhead.h"
 
 #define MAGIC (0xfeedb007u)
+
+/* Define this to debug this file */
+//#define DEBUG
+
+
+#ifdef DEBUG
+#define dprintf if (1) printf
+#else
+#define dprintf if (0) printf
+#endif
 
 
 /*************************************************** Gerph *********
@@ -43,6 +54,10 @@ _kernel_oserror *descriptor_check(MessageTrans_ControlBlock *md,
         return err_MessageTransSyntaxDescriptor;
     if ((((intptr_t)md) & 3) != 0)
         return err_MessageTransSyntaxDescriptor;
+
+    dprintf("DescriptorCheck: magic       = &%08x\n", md->magic);
+    dprintf("                 messagefile = %p\n", md->messagefile);
+    dprintf("                 size        = &%08x\n", md->size);
 
     /* Check if it is a descriptor */
     if (md->magic != MAGIC)
@@ -62,7 +77,7 @@ _kernel_oserror *descriptor_check(MessageTrans_ControlBlock *md,
     if (md->size > 0x10000)
         return err_MessageTransSyntaxCorrupt;
 
-    *mfdp = (messagefiledata_t *)&md->messagefile;
+    *mfdp = (messagefiledata_t *)&md->size;
 
     return NULL;
 }

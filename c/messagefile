@@ -17,7 +17,7 @@
 
 
 /* Define this to debug this file */
-//#define DEBUG
+#define DEBUG
 
 
 #ifdef DEBUG
@@ -108,6 +108,14 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
     const char *search = mfd->messagefile->data;
     const char *end = search + mfd->size;
 
+    if (search == NULL)
+    {
+        dprintf("FindIndex: search message data invalid - internal error\n");
+        found.value = 0;
+        found.len = 0;
+        return found;
+    }
+
     dprintf("Find: token='%s'\n", token);
 
     while (search < end)
@@ -126,6 +134,7 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
         }
         if (c == '\n')
         {
+            search++;
             continue;
         }
 
@@ -147,6 +156,7 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
                  *toksearch == ':') && (*search == '/' || *search == '\n' || *search == ':'))
             {
                 /* They are a match */
+                dprintf("Match found\n");
                 goto match;
             }
             /* Note: The MessageTrans file format doesn't support multi-char wildcards */
@@ -186,7 +196,7 @@ match:
     while (*search++ != '\n' && search < end)
         ; /* All in the while */
 
-    if (search >= end)
+    if (search > end)
         goto fail;
 
     found.len = search - found.value - 1;
@@ -209,6 +219,16 @@ messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wil
     const char *sot; /* Start of token */
     const char *end = search + mfd->size;
 
+    dprintf("mfd->messagefile = %p\n", mfd->messagefile);
+
+    if (search == NULL)
+    {
+        dprintf("FindIndex: search message data invalid - internal error\n");
+        found.value = 0;
+        found.len = 0;
+        return found;
+    }
+
     if (wild && strcmp(wild, "*")==0)
         wild = NULL;
 
@@ -229,6 +249,7 @@ messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wil
         }
         if (c == '\n')
         {
+            search++;
             continue;
         }
 

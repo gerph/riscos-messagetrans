@@ -147,24 +147,40 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *regs, void *pw)
     messagefiledata_t mfd;
     int32_t size;
 
+    dprintf("Opening message file %s\n", file_name);
+
     /* Ensure that if we return, the magic is NEVER valid */
     cb->magic = 0;
 
-    /* FIXME: SWI not yet implemented */
     /* The API doesn't supply the buffer size, so actually we'll just have
      * to assume that it's correct.
      */
     size = messagefile_size(file_name);
     if (size == -1)
+    {
+        dprintf("  Failed to open file\n");
         return err_MessageTransFileOpen;
+    }
+    dprintf("  File size is %i\n", size);
 
     mfd.messagefile = (messagefile_t*)buffer;
     mfd.size = size;
     err = messagefile_load(file_name, &mfd);
     if (err)
+    {
+        dprintf("  Failed to read in file\n");
         return err;
+    }
 
     err = descriptor_populate(cb, &mfd);
+    if (err)
+    {
+        dprintf("  Failed descriptor population: %s\n", err->errmess);
+        return err;
+    }
+    dprintf("  Opened: magic       = &%08x\n", cb->magic);
+    dprintf("          messagefile = %p\n", cb->messagefile);
+    dprintf("          size        = &%08x\n", cb->size);
 
     return err;
 }
@@ -220,6 +236,8 @@ _kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *regs, void *pw)
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
+    dprintf("Lookup: token=%s\n", token ? token : "<NULL>");
+
     found = messagefile_find(mfd, token);
     if (found.value == NULL)
         return err_MessageTransTokenNotFound;
@@ -372,6 +390,7 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *p
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
+    dprintf("Enumerate: token=%s, index=%i\n", token ? token : "<NULL>", context);
     found = messagefile_findindex(mfd, token, context);
 
     if (found.value == NULL)
@@ -590,7 +609,7 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
 
 
     regs->r[2] = (int)result;  // .String
-    regs->r[3] = (int)used - 1;  // .Int
+    regs->r[3] = (int)used;  // .Int
     return err;
 }
 
