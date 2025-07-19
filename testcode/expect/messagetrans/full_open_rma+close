@@ -1,0 +1,66 @@
+Attempting OpenFile
+ 382d4f0: <WATCH> WRITE [&00000000] = &6f432023  (word) - Low vectors
+            r0  = &00000000, r1  = &0700689c, r2  = &0000003b, r3  = &6f432023
+            r4  = &6e656d6d, r5  = &00000000, r6  = &0000005b, r7  = &0000005b
+            r8  = &ffffffff, r9  = &04800cfc, r10 = &0410021c, r11 = &04107e84
+            r12 = &6f540a74, sp  = &04107e70, lr  = &3a6e656b, pc  = &0382d4f0
+            CPSR= &20000013 : SVC-32 ARM fi ae qvCzn
+            SPSR= &20000013 : SVC-32 ARM fi ae qvCzn
+          Locations:
+            r1  -> [&756c6156, &69570a65, &6163646c, &3a3f6472] in DA 'Module allocations'
+            r9  -> [&00000000, &00000000, &00000000, &00000000] in DA 'Utility executables'
+            r10 -> [&00000000, &00000000, &00000000, &00000000] in DA 'SVC Stack'
+            r11 -> [&0382d4c8, &00000000, &0000005b, &07005c30] in DA 'SVC Stack'
+            pc is DA 'ROM', module 'SharedCLibrary': Function memcpy+&40
+          C backtrace:
+             382d4f0 function memcpy
+                     Arg1: &00000000           0    
+             3832d28 function _read
+                     Arg1: &00000000           0    
+                     Arg2: &0000005b          91    
+                     Arg3: &07005c30   117464112    [&0700688c, &0000005b, &00000000, &00421905]
+             3832dd0 function fread
+                     Arg1: &00000000           0    
+                     Arg2: &00000001           1    
+                     Arg3: &0000005b          91    
+                     Arg4: &07005c30   117464112    [&0700688c, &0000005b, &00000000, &00421905]
+             7002340 function messagefile_load
+                     Arg1: &04801235    75502133    "testdata.messages.testfile"
+                     Arg2: &04107efc    68189948    [&0000005b, &00000000, &00000001, &04107f2c]
+             7002ba8 function SWI_OpenFile
+                     Arg1: &00000001           1    
+                     Arg2: &04107f2c    68189996    [&04800cfc, &04801235, &00000000, &00000000]
+                     Arg3: &070005c4   117441988    [&0700476c, &00000000, &00000000, &00000010]
+          Data around watchpoint {DA 'Zero Page'}:
+            &00000000 >> &44414544 = 1145128260 
+            &00000004  : &21212121 = 555819297  
+            &00000008  : &6c754e20 = 1819627040 
+            &0000000c  : &6f70206c = 1869619308 
+            &00000010  : &65746e69 = 1702129257 
+            &00000014  : &73752072 = 1937055858 
+            &00000018  : &21206465 = 555770981  
+            &0000001c  : &00212121 = 2171169    {DA 'Application Space'}
+          Executing code block (pc is not exact):
+             382d4f0: STMDB   sp!, {r4}
+             382d4f4: LDMIA   r1!, {r3, r4, r12, lr}
+             382d4f8: STMIA   r0!, {r3, r4, r12, lr}
+             382d4fc: LDMIA   r1!, {r3, r4, r12, lr}
+             382d500: STMIA   r0!, {r3, r4, r12, lr}
+             382d504: SUBS    r2, r2, #&20              ; #32  = ' ' = bit 5
+             382d508: BGE     &0382d4f4
+             382d50c: CMN     r2, #&10                  ; #&ffffffef = -17
+             382d510: LDMGEIA r1!, {r3, r4, r12, lr}
+             382d514: STMGEIA r0!, {r3, r4, r12, lr}
+             382d518: SUBGE   r2, r2, #&10              ; #16 = bit 4
+             382d51c: LDMIA   sp!, {r4}
+             382d520: ADDS    r2, r2, #&14              ; #20
+             382d524: LDMGEIA r1!, {r3, r12, lr}
+             382d528: STMGEIA r0!, {r3, r12, lr}
+             382d52c: SUBSGE  r2, r2, #&c               ; #12
+Exception: Data abort
+  r0  = &00000000, r1  = &0700689c, r2  = &0000003b, r3  = &6f432023
+  r4  = &6e656d6d, r5  = &00000000, r6  = &0000005b, r7  = &0000005b
+  r8  = &ffffffff, r9  = &04800cfc, r10 = &0410021c, r11 = &04107e84
+  r12 = &6f540a74, sp  = &04107e70, lr  = &3a6e656b, pc  = &0382d4f0
+  CPSR= &20000013 : SVC-32 ARM fi ae qvCzn
+Error: Internal error: Abort on data transfer at &0382d4f0 (DA 'ROM', module 'SharedCLibrary': Function memcpy+&40) (write at &00000000, DA 'Zero Page') (Error number &80000002)

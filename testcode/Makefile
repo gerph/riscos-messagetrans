@@ -36,3 +36,14 @@ dirs:
 	@mkdir -p absolute/o
 	@mkdir -p module/o
 	@mkdir -p utility/o
+
+MODULE = MessageTrans
+
+tests-messagetrans.txt: tests-messagetrans-pyro.txt transform-pyro-tests-to-buildservice.sh
+	./transform-pyro-tests-to-buildservice.sh tests-messagetrans-pyro.txt $@
+
+${MODULE},ffa: ../rm32/${MODULE},ffa
+	cp $? $@
+
+tests: ${MODULE},ffa tests-messagetrans.txt run-on-build-service.sh test.pl
+	./test.pl --show-command --show-diff ./run-on-build-service.sh .
