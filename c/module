@@ -160,7 +160,8 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *regs, void *pw)
     if (size == -1)
     {
         dprintf("  Failed to open file\n");
-        return err_MessageTransFileOpen;
+        return _kernel_last_oserror();
+        //return err_MessageTransFileOpen;
     }
     dprintf("  File size is %i\n", size);
 
