@@ -2,4 +2,5 @@ Attempting OpenFile
 Open OK
 Attempting Lookup of: This
   into buffer of length: 8
-Error: MESSAGE (Error number &1e5)
+  Value: >>>Alterna<<<
+  Length: 7

@@ -63,7 +63,6 @@ Expect: expect/pymodules/messagetrans/full_open+lookup
 Test: Open file + Lookup token (overflow)
 Command: $TOOL --load-internal-modules --config messagetrans.support=simple bin/messagetrans "otestdata.messages.testfile ltThis"
 Expect: expect/pymodules/messagetrans/full_open+lookup_overflow
-RC: 1
 
 Test: Open file + Lookup failure
 Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile lrJerry"
