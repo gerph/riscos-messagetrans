@@ -63,7 +63,7 @@ int32_t messagefile_size(const char *filename)
     size = ftell(fh);
     fclose(fh);
 
-    return (int32_t)size;
+    return (int32_t)size + 1;
 }
 
 
@@ -138,7 +138,7 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
             continue;
         }
 
-        while (c != ':')
+        while (c != ':' && search < end)
         {
             /* Process the tokens - we need to match against the token supplied */
             dprintf("  Trying to match at message '%.8s...'\n", search - 1);
@@ -176,8 +176,22 @@ messagefilefound_t messagefile_find(messagefiledata_t *mfd, const char *token)
     }
 
 fail:
-    found.value = NULL;
-    found.len = 0;
+    /* Check if there is a default value supplied in the token */
+    while (*token != '\0' && *token != '\r' && *token != '\n' && *token != ':')
+        token++;
+    if (*token++ == ':')
+    {
+        /* A default value was given */
+        found.value = token;
+        while (*token != '\0' && *token != '\r' && *token != '\n')
+            token++;
+        found.len = token - found.value;
+    }
+    else
+    {
+        found.value = NULL;
+        found.len = 0;
+    }
     return found;
 
 match:
@@ -219,7 +233,7 @@ messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wil
     const char *sot; /* Start of token */
     const char *end = search + mfd->size;
 
-    dprintf("mfd->messagefile = %p\n", mfd->messagefile);
+    //dprintf("mfd->messagefile = %p\n", mfd->messagefile);
 
     if (search == NULL)
     {
@@ -232,7 +246,7 @@ messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wil
     if (wild && strcmp(wild, "*")==0)
         wild = NULL;
 
-    dprintf("FindIndex: index='%i', wildcard='%s'\n", index, wild ? wild : "*");
+    dprintf("FindIndex: index=%i, wildcard='%s'\n", index, wild ? wild : "*");
 
     while (search < end)
     {
@@ -243,7 +257,7 @@ messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wil
         if (c == '#')
         {
             /* Comment line, so skip */
-            while ((c=*search++) != '\n' && search < end)
+            while (*search++ != '\n' && search < end)
                 ; /* All in the while */
             continue;
         }
@@ -256,7 +270,7 @@ messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wil
         while (c != ':' && search < end)
         {
             /* Process the tokens - we need to locate the right one */
-            dprintf("  Trying to match at message '%.8s...'\n", search - 1);
+            dprintf("  Trying to match at message '%.8s...'\n", search);
             sot = search;
 
             /* Find the end of this token */
@@ -276,10 +290,6 @@ messagefilefound_t messagefile_findindex(messagefiledata_t *mfd, const char *wil
                 goto match;
             index--;
         }
-        /* We have reached the end of the token list, or the end of the file; skip to next */
-        /* Look for the next token start */
-        if (search >= end)
-            break;
 
         /* Look for the end of this token line */
         while ((c=*search++) != '\n' && search < end)

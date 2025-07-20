@@ -2,8 +2,8 @@ Attempting OpenFile
 Open OK
 Attempting Enumeration matching: *
   Token: >>>Token<<<
-  Token: >>>Token<<<
   Token: >>>Wildcard?<<<
+  Token: >>>This<<<
   Token: >>>That<<<
   Token: >>>Rick<<<
   Token: >>>Morty<<<

@@ -8,6 +8,7 @@
         GET     hdr.menus
 
 mtdesc_len * 16
+mtdata_len * 256
 smalldata_len * 256
 tinydata_len * 8
 
@@ -107,7 +108,7 @@ do_open SIGNATURE
 
         PrintLine "Attempting OpenFile"
 
-        ADRL    r2, smalldata
+        ADRL    r2, mtdata
         XSWI    MessageTrans_OpenFile, r9
 
         PrintLine "Open OK"
@@ -137,7 +138,7 @@ do_check SIGNATURE
 
         PrintLine "Checking lines in the loaded content"
 
-        ADRL    r4, smalldata
+        ADRL    r4, mtdata
         MOV     r5, #0
 10
         MOV     r0, r4
@@ -295,6 +296,9 @@ menu
 mtdesc  % mtdesc_len
 
 ; some place to load the data (if we load it at all)
+mtdata % mtdata_len
+
+; a buffer to put our results into
 smalldata % smalldata_len
 
         END

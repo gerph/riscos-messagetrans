@@ -429,7 +429,7 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *p
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
-    dprintf("Enumerate: token=%s, index=%i\n", token ? token : "<NULL>", context);
+    dprintf("Enumerate: token=%s, index=%i%s\n", token ? token : "<NULL>", context, buffer==NULL ? " (without copying)" : "");
     found = messagefile_findindex(mfd, token, context);
 
     if (found.value == NULL)
@@ -442,6 +442,7 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *p
     {
         if (buffer != NULL)
         {
+            dprintf("  Copying into buffer %p\n", buffer);
             more = buffer; /* preserved when found */
             if (size < found.len)
             {
@@ -455,6 +456,7 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *p
         }
         else
         {
+            dprintf("  Returning directly as %p\n", found.value);
             /* No copy variant */
             more = found.value;
         }
