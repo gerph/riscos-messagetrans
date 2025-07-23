@@ -1,0 +1,110 @@
+#
+# SUT:    Extension Modules: MessageTrans
+# Area:   SWIs
+# Class:  Functional
+# Type:   Integration test
+#
+
+
+Group: MessageTrans (Finalisation)
+Replace: expect/pymodules/messagetrans/error_replacements
+
+Test: Kill module
+Command: $TOOL --load-internal-modules bin/messagetrans "X"
+Expect: expect/pymodules/messagetrans/kill
+
+
+Group: MessageTrans (Full mode)
+Replace: expect/pymodules/messagetrans/error_replacements
+
+Test: File info
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "itestdata.messages.testfile"
+Expect: expect/pymodules/messagetrans/full_info_testfile
+
+Test: Open file
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile"
+Expect: expect/pymodules/messagetrans/full_open_testfile
+
+Test: Open file (RMA)
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "rtestdata.messages.testfile"
+Expect: expect/pymodules/messagetrans/full_open_rma_testfile
+
+Test: Open file (nonexistant)
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.nonexistant"
+Expect: expect/pymodules/messagetrans/full_open_nonexistant
+RC: 1
+
+Test: Open file (RMA + nonexistant)
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "rtestdata.messages.nonexistant"
+Expect: expect/pymodules/messagetrans/full_open_rma_nonexistant
+RC: 1
+
+Test: Open file + Check memory
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile K4"
+Expect: expect/pymodules/messagetrans/full_open_testfile+check
+
+Test: Open file + Close file
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile c"
+Expect: expect/pymodules/messagetrans/full_open+close
+
+Test: Open file (RMA) + Close file
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "rtestdata.messages.testfile c"
+Expect: expect/pymodules/messagetrans/full_open_rma+close
+
+Test: Open file + Close file + Close
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile cc"
+Expect: expect/pymodules/messagetrans/full_open+close+close
+RC: 1
+
+Test: Open file + Lookup token
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile lrRick"
+Expect: expect/pymodules/messagetrans/full_open+lookup
+
+Test: Open file + Lookup token (overflow)
+Command: $TOOL --load-internal-modules --config messagetrans.support=simple bin/messagetrans "otestdata.messages.testfile ltThis"
+Expect: expect/pymodules/messagetrans/full_open+lookup_overflow
+
+Test: Open file + Lookup failure
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile lrJerry"
+Expect: expect/pymodules/messagetrans/full_open+lookup_failure
+RC: 1
+
+Test: Open file + Lookup failure with default
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile lrJerry:Defaulted"
+Expect: expect/pymodules/messagetrans/full_open+lookup_failure_defaulted
+
+Test: Open file + Lookup Wildcard
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile lrWildcard1"
+Expect: expect/pymodules/messagetrans/full_open+lookup_wildcard
+
+Test: Open file + GSLookup failure
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile gJerry"
+Expect: expect/pymodules/messagetrans/full_open+gslookup_failure
+RC: 1
+
+Test: Open file + GSLookup failure with default
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile gJerry:Expand<65>"
+Expect: expect/pymodules/messagetrans/full_open+gslookup_failure_defaulted
+
+Test: Open file + Enumerate tokens
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile e*"
+Expect: expect/pymodules/messagetrans/full_open+enumerate
+
+Test: Open file + Enumerate tokens starting T
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile eT*"
+Expect: expect/pymodules/messagetrans/full_open+enumerate_prefix
+
+# CURRENTLY MakeMenus is failing.
+Test: Open file + MakeMenus
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.menu m"
+Expect: expect/pymodules/messagetrans/full_makemenus
+RC: 1
+
+Test: Close file
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "c"
+Expect: expect/pymodules/messagetrans/full_close
+RC: 1
+
+Test: Open file + Kill module
+Command: $TOOL --load-internal-modules --config messagetrans.support=full bin/messagetrans "otestdata.messages.testfile X"
+Expect: expect/pymodules/messagetrans/full_open+kill

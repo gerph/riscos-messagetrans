@@ -1,0 +1,8 @@
+Attempting OpenFile
+Open OK
+Checking lines in the loaded content
+Line 0   : ># Comment<
+Line 1   : >Token:Value<
+Line 2   : >Wildcard?:Matched wildcard<
+Line 3   : >This/That:Alternatives<
+Check complete

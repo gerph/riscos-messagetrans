@@ -1,0 +1,114 @@
+
+; Constants for the creation of menus.
+
+; Icon flags
+iconflags_text              * (1<<0)
+iconflags_sprite            * (1<<1)
+iconflags_border            * (1<<2)
+iconflags_hcentred          * (1<<3)
+iconflags_vcentred          * (1<<4)
+iconflags_filled            * (1<<5)
+iconflags_antialiased       * (1<<6)
+iconflags_needshelp         * (1<<7)
+iconflags_indirected        * (1<<8)
+iconflags_rjustified        * (1<<9)
+iconflags_allowadjust       * (1<<10)
+iconflags_halfsize          * (1<<11)
+iconflags_buttontypeshift   * 12
+iconflags_buttontype        * (15<<12)
+iconflags_esg               * (31<<16)
+iconflags_selected          * (1<<21)
+iconflags_shaded            * (1<<22)
+iconflags_deleted           * (1<<23)
+iconflags_fgcolourshift     * 24
+iconflags_bgcolourshift     * 28
+iconflags_fgcolour          * 15<<24
+iconflags_bgcolour          * 15<<28
+
+; Button numbers
+iconbutton_never            * 0
+iconbutton_always           * 1
+iconbutton_repeat           * 2
+iconbutton_click            * 3
+iconbutton_release          * 4
+iconbutton_doubleclick      * 5
+iconbutton_clickdrag        * 6
+iconbutton_releasedrag      * 7
+iconbutton_doubledrag       * 8
+iconbutton_menuicon         * 9
+iconbutton_doubleclickdrag  * 10
+iconbutton_radio            * 11
+iconbutton_writeclickdrag   * 14
+iconbutton_writable         * 15
+
+
+; Menu flags
+menuflags_tick              * (1<<0)
+menuflags_dotted            * (1<<1)
+menuflags_writeable         * (1<<2)
+menuflags_warning           * (1<<3)
+menuflags_greyok            * (1<<4)
+menuflags_lastitem          * (1<<7)
+menuflags_titleindirect     * (1<<8)
+
+
+; Base values for the menu macros
+
+;                     Text        Border      HCentre     VCentre     Fill        C/DC/Drag    FG Black     BG White
+menuiconflags_base  * (1<<0) :OR: (0<<2) :OR: (0<<3) :OR: (0<<4) :OR: (1<<5) :OR: (0<<12) :OR: (7<<24) :OR: (0<<28)
+menuflags_base      * 0
+
+
+; Some macros to make a menu.
+        MACRO
+        MENUHEAD    $title, $tfg=7, $tbg=2, $wfg=7, $wbg=0, $height=44, $gap=0
+        = "$title", 0
+    [ "$tfg" = ""
+        = 7
+    |
+        = $tfg
+    ]
+    [ "$tbg" = ""
+        = 2
+    |
+        = $tbg
+    ]
+    [ "$wfg" = ""
+        = 7
+    |
+        = $wfg
+    ]
+    [ "$wbg" = ""
+        = 0
+    |
+        = "$wbg"
+    ]
+    [ "$height" = ""
+        = 44
+    |
+        = $height
+    ]
+    [ "$gap" = ""
+        = 0
+    |
+        = $gap
+    ]
+        MEND
+
+        MACRO
+        MENUITEM    $text, $menuflags, $iconflags
+        = "$text", 0
+        ALIGN
+        DCD         menuflags_base :OR: $menuflags
+        DCD         0                       ; submenu
+        DCD         menuiconflags_base :OR: $iconflags
+        MEND
+
+        MACRO
+        MENUEND
+        =           0
+        ALIGN
+        MEND
+
+
+        END

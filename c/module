@@ -70,6 +70,7 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
     gstrans_final();
+    descriptor_final();
     dprintf("MessageTrans finalised\n");
     return NULL;
 }
@@ -137,7 +138,7 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *regs, void *pw)
      *
      * =>  R0 = cb
      *     R1 -> file_name
-     *     R2 = buffer
+     *     R2 = buffer, or NULL to allocate in the RMA
      */
 
     /* Input registers */
@@ -159,24 +160,63 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *regs, void *pw)
     if (size == -1)
     {
         dprintf("  Failed to open file\n");
-        return err_MessageTransFileOpen;
+        return _kernel_last_oserror();
+        //return err_MessageTransFileOpen;
     }
     dprintf("  File size is %i\n", size);
 
-    mfd.messagefile = (messagefile_t*)buffer;
-    mfd.size = size;
-    err = messagefile_load(file_name, &mfd);
-    if (err)
+    if (buffer == NULL)
     {
-        dprintf("  Failed to read in file\n");
-        return err;
+        /* RMA-allocated descriptor, so we need to do special things */
+        MessageTrans_ControlBlock * real_cb = descriptor_createproxy();
+        mfd.messagefile = (messagefile_t*)malloc(size);
+        mfd.size = size;
+        if (mfd.messagefile == NULL)
+        {
+            descriptor_destroy(real_cb);
+            return err_NoMemoryLoad;
+        }
+        err = messagefile_load(file_name, &mfd);
+        if (err)
+        {
+            descriptor_destroy(real_cb);
+            free(mfd.messagefile);
+            return err;
+        }
+        err = descriptor_populate(real_cb, &mfd);
+        if (err)
+        {
+            dprintf("  Failed descriptor population: %s\n", err->errmess);
+            descriptor_destroy(real_cb);
+            free(mfd.messagefile);
+            return err;
+        }
+        err = descriptor_populateproxy(cb, real_cb);
+        if (err)
+        {
+            dprintf("  Failed proxy descriptor population: %s\n", err->errmess);
+            descriptor_destroy(real_cb);
+            free(mfd.messagefile);
+            return err;
+        }
     }
-
-    err = descriptor_populate(cb, &mfd);
-    if (err)
+    else
     {
-        dprintf("  Failed descriptor population: %s\n", err->errmess);
-        return err;
+        mfd.messagefile = (messagefile_t*)buffer;
+        mfd.size = size;
+        err = messagefile_load(file_name, &mfd);
+        if (err)
+        {
+            dprintf("  Failed to read in file\n");
+            return err;
+        }
+
+        err = descriptor_populate(cb, &mfd);
+        if (err)
+        {
+            dprintf("  Failed descriptor population: %s\n", err->errmess);
+            return err;
+        }
     }
     dprintf("  Opened: magic       = &%08x\n", cb->magic);
     dprintf("          messagefile = %p\n", cb->messagefile);
@@ -305,6 +345,7 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
         return err;
 
     /* FIXME: SWI not yet implemented */
+    err = err_MessageTransTokenNotFound; /* Fake error whilst not implemented */
 
     regs->r[3] = (int)used;  // .Int
     return err;
@@ -340,8 +381,7 @@ _kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *regs, void *pw)
     if (err)
         return err;
 
-    /* FIXME: SWI not yet implemented */
-
+    err = descriptor_destroy(cb);
     return err;
 }
 
@@ -390,7 +430,7 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *p
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
-    dprintf("Enumerate: token=%s, index=%i\n", token ? token : "<NULL>", context);
+    dprintf("Enumerate: token=%s, index=%i%s\n", token ? token : "<NULL>", context, buffer==NULL ? " (without copying)" : "");
     found = messagefile_findindex(mfd, token, context);
 
     if (found.value == NULL)
@@ -403,6 +443,7 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *p
     {
         if (buffer != NULL)
         {
+            dprintf("  Copying into buffer %p\n", buffer);
             more = buffer; /* preserved when found */
             if (size < found.len)
             {
@@ -416,6 +457,7 @@ _kernel_oserror *SWI_EnumerateTokens(int number, _kernel_swi_regs *regs, void *p
         }
         else
         {
+            dprintf("  Returning directly as %p\n", found.value);
             /* No copy variant */
             more = found.value;
         }
@@ -567,7 +609,7 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
         int new_size;
         char *new_buffer = gstrans_getbuffer(size, &new_size);
         if (new_buffer == NULL)
-            return err_NoMemory;
+            return err_NoMemoryGS;
         err = tokens_substitute(&found,
                                 new_buffer,
                                 new_size,
@@ -584,7 +626,7 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
                  */
                 new_buffer = gstrans_getbuffer(used, &new_size);
                 if (new_buffer == NULL)
-                    return err_NoMemory;
+                    return err_NoMemoryGS;
                 err = tokens_substitute(&found,
                                         new_buffer,
                                         new_size,

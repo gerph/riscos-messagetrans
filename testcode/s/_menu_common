@@ -1,0 +1,218 @@
+; Common functions for operating on the menus and reporting their state.
+
+
+; Display the contents of a menu supplied
+; => r0 -> the menu
+;    r1 = number of characters to indent by
+menu_show SIGNATURE
+        Push    "r0-r3, lr"
+        MOV     r2, r1
+        MOV     r1, r0
+
+        BL      menu_show_header
+        ADD     r2, r2, #2              ; indent menu entries
+        ADD     r1, r1, #12 + 16
+
+10
+        BL      menu_show_item
+        LDR     r0, [r1], #12 + 12      ; menu flags (and skip to the next item)
+        TST     r0, #menuflags_lastitem
+        BEQ     %BT10
+
+        Pull    "r0-r3, pc"
+
+
+; Display the menu header
+; => r1 -> the menu header
+;    r2 = the indentation level
+menu_show_header SIGNATURE
+        Push    "r0-r3, lr"
+
+; Write the title
+        XBL     menu_indent, r2
+        PrintMessage "Title:", 12
+        MOV     r0, r1                  ; the menu title
+        LDR     r14, [r1, #12 + 16]     ; menu flags for the first item
+        TST     r14, #menuflags_titleindirect
+        LDRNE   r0, [r1]                ; the text is indirected
+        MOVNE   r3, #-1                 ; unlimited characters
+        MOVEQ   r3, #12                 ; limit to 12 characters
+        ; NOTE: We're not handling the cases where the menus contain sprite only.
+        XBL     menu_print
+        SWI     OS_NewLine
+
+; Write the colours
+        XBL     menu_indent, r2
+        PrintMessage "TColour:", 12
+
+        LDRB    r0, [r1, #12 + 0]       ; title fg
+        PrintMessage "FG: "
+        PrintInteger r0, 3
+
+        LDRB    r0, [r1, #12 + 1]       ; title bg
+        PrintMessage " / BG: "
+        PrintInteger r0, 3
+        SWI     OS_NewLine
+
+; And the menu colours
+        XBL     menu_indent, r2
+        PrintMessage "MColour:", 12
+
+        LDRB    r0, [r1, #12 + 2]       ; workarea fg
+        PrintMessage "FG: "
+        PrintInteger r0, 3
+
+        LDRB    r0, [r1, #12 + 3]       ; workarea bg
+        PrintMessage " / BG: "
+        PrintInteger r0, 3
+        SWI     OS_NewLine
+
+; Width and gap
+        XBL     menu_indent, r2
+        PrintMessage "Size:", 12
+
+        LDR     r0, [r1, #12 + 4]       ; width
+        PrintMessage "Width: "
+        PrintInteger r0, 8
+
+        LDR     r0, [r1, #12 + 8]       ; height of entries
+        PrintMessage " / Height: "
+        PrintInteger r0, 8
+
+        LDR     r0, [r1, #12 + 12]      ; gap between entries
+        PrintMessage " / Gap: "
+        PrintInteger r0, 8
+        SWI     OS_NewLine
+
+        Pull    "r0-r3, pc"
+
+
+; Display the menu item
+; => r1 -> the menu header
+;    r2 = the indentation level
+menu_show_item SIGNATURE
+        Push    "r0-r5, lr"
+
+; Write the item title
+        XBL     menu_indent, r2
+        PrintMessage "Item:", 12
+
+        LDR     r4, [r1, #0]            ; menu flags for the item
+        LDR     r5, [r1, #8]            ; icon flags for the item
+
+        TST     r4, #menuflags_tick
+        ADRNE   r0, is_ticked
+        ADREQ   r0, not_ticked
+        SWI     XOS_Write0
+
+        ADR     r0, not_shaded
+        TST     r4, #menuflags_writeable
+        ADRNE   r0, is_writeable
+        TST     r5, #iconflags_shaded
+        ADRNE   r0, is_shaded
+        SWI     XOS_Write0
+
+        ADD     r0, r1, #12             ; the icon text
+        TST     r5, #iconflags_indirected
+        LDRNE   r0, [r1, #12]           ; the text is indirected
+        MOVNE   r3, #-1                 ; unlimited characters
+        MOVEQ   r3, #12                 ; limit to 12 characters
+        ; NOTE: We're not handling the cases where the menus contain sprite only.
+        XBL     menu_print
+
+; Show the colours if they're different to the norm
+        AND     r0, r5, #iconflags_fgcolour | iconflags_bgcolour
+        TEQ     r0, #(7<<iconflags_fgcolourshift) | (0<<iconflags_bgcolourshift)
+        BEQ     %FT60
+
+        PrintMessage "    [FG: "
+        MOV     r14, r0, LSR #iconflags_fgcolourshift
+        AND     r14, r14, #15
+        PrintInteger r14
+        PrintMessage " / BG: "
+        MOV     r14, r0, LSR #iconflags_bgcolourshift
+        AND     r14, r14, #15
+        PrintInteger r14
+        PrintMessage "]"
+
+60
+
+; FIXME: Maybe include the other icon flags if they're different than the norm.
+
+        SWI     OS_NewLine
+
+        LDR     r0, [r1, #4]            ; get submenu pointer
+        CMP     r0, #0
+        CMPNE   r0, #-1
+        BEQ     %FT80
+
+        ADD     r1, r2, #2
+        BL      menu_show
+
+80
+        TST     r4, #menuflags_dotted
+        BEQ     %FT90
+
+        XBL     menu_indent, r2
+        PrintLine "----"
+
+90
+        Pull    "r0-r5, pc"
+
+is_ticked = "X ", 0
+not_ticked = "  ", 0
+
+is_shaded = "-", 0
+is_writeable = "+", 0
+not_shaded = " ", 0
+
+
+; Print a control terminated string
+; => r0 -> the string to print
+;    r3 = maximum to print
+menu_print SIGNATURE
+        Push    "r0-r3, lr"
+        ADD     r3, r3, r0              ; the end pointer
+        MOVS    r1, r0
+        ADREQ   r1, %FT110
+10
+        LDRB    r0, [r1], #1
+        CMP     r0, #32
+        BLO     %FT90
+        SWI     OS_WriteC
+        TEQ     r1, r3
+        BNE     %BT10
+90
+
+        Pull    "r0-r3, pc"
+110
+        = "<NULL>", 0
+
+
+; Write the indentation for this menu
+; => r0 = indentation count
+menu_indent SIGNATURE
+        Push    "r0-r3, lr"
+        MOV     r1, r0
+10
+        CMP     r1, #4
+        BLO     %FT20
+        XSWI    XOS_Write0, ^four_spaces
+        SUB     r1, r1, #4
+        B       %BT10
+
+20
+; we know that it's 0, 1, 2, or 3
+        SUBS    r1, r1, #1
+        SWIPL   OS_WriteI + ' '
+        SUBS    r1, r1, #1
+        SWIPL   OS_WriteI + ' '
+        SUBS    r1, r1, #1
+        SWIPL   OS_WriteI + ' '
+
+        Pull    "r0-r3, pc"
+
+four_spaces
+        = "    ", 0
+
+        END
