@@ -183,7 +183,7 @@ uint32_t bufferdata_write_word(bufferdata_t *buf, uint32_t value)
 
 /*************************************************** Gerph *********
  Function:      bufferdata_write_string0aligned
- Description:   Write a string to the current offset, and move ahead byte its length, then align
+ Description:   Write a string to the current offset, and move ahead by its length, then align
  Parameters:    buf-> the buffer we're operating on
                 value = the value we are writing
  Returns:       the offset the value was written to
@@ -203,7 +203,7 @@ uint32_t bufferdata_write_string0aligned(bufferdata_t *buf, const char *value)
 
 /*************************************************** Gerph *********
  Function:      bufferdata_write_string0
- Description:   Write a string to the current offset, and move ahead byte its length
+ Description:   Write a string to the current offset, and move ahead by its length
  Parameters:    buf-> the buffer we're operating on
                 value = the value we are writing
  Returns:       the offset the value was written to
@@ -223,7 +223,7 @@ uint32_t bufferdata_write_string0(bufferdata_t *buf, const char *value)
 
 /*************************************************** Gerph *********
  Function:      bufferdata_write_stringcr
- Description:   Write a string to the current offset, and move ahead byte its length, terminating with CR
+ Description:   Write a string to the current offset, and move ahead by its length, terminating with CR
  Parameters:    buf-> the buffer we're operating on
                 value = the value we are writing
  Returns:       the offset the value was written to
@@ -246,7 +246,7 @@ uint32_t bufferdata_write_stringcr(bufferdata_t *buf, const char *value)
 
 /*************************************************** Gerph *********
  Function:      bufferdata_write_stringpadded
- Description:   Write a string to the current offset, and move ahead byte its length, passing to maxlen with 0s
+ Description:   Write a string to the current offset, and move ahead by its length, passing to maxlen with 0s
  Parameters:    buf-> the buffer we're operating on
                 value = the value we are writing
  Returns:       the offset the value was written to
@@ -281,13 +281,13 @@ uint32_t bufferdata_write_stringpadded(bufferdata_t *buf, const char *value, uin
 
 /*************************************************** Gerph *********
  Function:      bufferdata_write_bytes
- Description:   Write a block of memory to the current offset, and move ahead byte its length
+ Description:   Write a block of memory to the current offset, and move ahead by its length
  Parameters:    buf-> the buffer we're operating on
                 data-> the bytes that we're writing
                 datalen = their length
  Returns:       the offset the value was written to
  ******************************************************************/
-uint32_t bufferdata_write_bytes(bufferdata_t *buf, void *data, uint32_t datalen)
+uint32_t bufferdata_write_bytes(bufferdata_t *buf, const void *data, uint32_t datalen)
 {
     uint32_t offset = buf->offset;
     buf->offset += datalen;
@@ -302,14 +302,40 @@ uint32_t bufferdata_write_bytes(bufferdata_t *buf, void *data, uint32_t datalen)
 }
 
 /*************************************************** Gerph *********
- Function:      bufferdata_write_bytesaligned
- Description:   Write a block of memory to the current offset, and move ahead byte its length, then align
+ Function:      bufferdata_write_bytespadded
+ Description:   Write a block of memory to the current offset with 0-padding, and move ahead by its padding
  Parameters:    buf-> the buffer we're operating on
                 data-> the bytes that we're writing
                 datalen = their length
  Returns:       the offset the value was written to
  ******************************************************************/
-uint32_t bufferdata_write_bytesaligned(bufferdata_t *buf, void *data, uint32_t datalen)
+uint32_t bufferdata_write_bytespadded(bufferdata_t *buf, const void *data, uint32_t datalen, uint32_t paddinglen)
+{
+    uint32_t offset = buf->offset;
+    buf->offset += paddinglen;
+    if (buf->offset > buf->limit)
+        buf->failed = true;
+    if (paddinglen > datalen)
+        datalen = paddinglen;
+    if (!buf->failed)
+    {
+        memcpy((char *)&buf->data[offset], data, datalen);
+        offset += datalen;
+        memset(&buf->data[offset], 0, paddinglen);
+    }
+
+    return offset;
+}
+
+/*************************************************** Gerph *********
+ Function:      bufferdata_write_bytesaligned
+ Description:   Write a block of memory to the current offset, and move ahead by its length, then align
+ Parameters:    buf-> the buffer we're operating on
+                data-> the bytes that we're writing
+                datalen = their length
+ Returns:       the offset the value was written to
+ ******************************************************************/
+uint32_t bufferdata_write_bytesaligned(bufferdata_t *buf, const void *data, uint32_t datalen)
 {
     uint32_t offset = buf->offset;
     uint32_t len = (datalen + 3) & ~3;

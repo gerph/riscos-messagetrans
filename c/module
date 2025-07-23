@@ -17,10 +17,12 @@
 #include "modhead.h"
 #include "types.h"
 #include "messagefile.h"
+#include "bufferdata.h"
 #include "descriptor.h"
 #include "tokens.h"
 #include "errorbufs.h"
 #include "gstrans.h"
+#include "menu.h"
 
 /* Define this to debug this file */
 //#define DEBUG
@@ -288,25 +290,36 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
      *     R1 -> menus
      *     R2 = buffer
      *     R3 = size
-     * <=  R3 = used
+     * <=  R3 = remaining (NOTE: oslib says this is the used space)
      */
 
     /* Input registers */
     MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
-    void * menus = (void *)regs->r[1];
-    char * buffer = (char *)regs->r[2];
+    const void * menus = (void *)regs->r[1];
+    uint8_t * buffer = (uint8_t *)regs->r[2];
     int32_t size = (int32_t)regs->r[3];
     /* Output registers */
-    int32_t used;
+    int32_t remaining;
     messagefiledata_t *mfd;
+    bufferdata_t buf;
 
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
 
-    /* FIXME: SWI not yet implemented */
+    bufferdata_init(&buf, buffer, size);
 
-    regs->r[3] = (int)used;  // .Int
+    err = menu_writemenus(mfd, menus, &buf);
+    if (err)
+        return err;
+
+    remaining = bufferdata_remaining(&buf);
+
+    if (bufferdata_failed(&buf))
+        err = err_BufferOverflowMakeMenus;
+
+    regs->r[2] = (int)bufferdata_address(&buf, 0, true);
+    regs->r[3] = (int)remaining;  // .Int
     return err;
 }
 
