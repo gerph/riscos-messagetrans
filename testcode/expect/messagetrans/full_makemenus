@@ -1,4 +1,14 @@
 Attempting OpenFile
 Open OK
 MakeMenus
-Error: MESSAGE (Error number &ac2)
+Complete. Used buffer = 148
+Title:      My Title
+TColour:    FG: 7   / BG: 2  
+MColour:    FG: 7   / BG: 0  
+Size:       Width: 236      / Height: 44       / Gap: 0       
+  Item:          an item
+  Item:          Item2
+  ----
+  Item:          default
+  Item:          long item te
+  Item:          Last item

@@ -18,7 +18,7 @@
 
 
 /* Define this to debug this file */
-#define DEBUG
+//#define DEBUG
 
 
 #ifdef DEBUG
@@ -72,8 +72,10 @@ const uint8_t *menu_writesubmenu(messagefiledata_t *md, const uint8_t *menus, bu
 
     data += 6; /* Skip the menu header parameters */
 
+    dprintf("  Menu title: %s  (from: %s)\n", title_text, title_token);
+
     // Write menu header
-    bufferdata_write_bytesaligned(buf, title_text, title_len < 12 ? title_len : 12);
+    bufferdata_write_bytespadded(buf, title_text, title_len < 12 ? title_len : 12, 12);
     bufferdata_write_byte(buf, title_fg);
     bufferdata_write_byte(buf, title_bg);
     bufferdata_write_byte(buf, workarea_fg);
@@ -171,6 +173,8 @@ const uint8_t *menu_writesubmenu(messagefiledata_t *md, const uint8_t *menus, bu
         uint32_t *width_word = (uint32_t *)bufferdata_address(buf, width_word_offset, false);
         *width_word = longest_text * 16 + 12;
     }
+    dprintf("  Menu complete: Remaining space: %i\n", bufferdata_remaining(buf));
+    dprintf("                 Required space: %i\n", bufferdata_required(buf));
     return data;
 }
 
@@ -190,138 +194,3 @@ _kernel_oserror *menu_writemenus(messagefiledata_t *md, const uint8_t *menus, bu
     }
     return NULL;
 }
-
-/*
-
-        def write_submenu(menu, buf):
-            """
-            Write the submenu into the data block.
-
-            @param menu:    pointer to the menu definition
-            @param buf:     BufferData for the output data
-
-            @return:    End of the menu definition
-            """
-            menu_base = buf.data[buf.offset]
-            longest_text = 0
-
-            title_token = menu.string_ctrl
-            data = menu[len(title_token) + 1]
-            title_fg = data[0].byte
-            title_bg = data[1].byte
-            workarea_fg = data[2].byte
-            workarea_bg = data[3].byte
-            height = data[4].byte
-            gap = data[5].byte
-            data = data[6]
-
-            title_text = self._lookup(title_token, {}, mt=mt, prefix='')
-            if self.debug_messagetrans:
-                print("  Menu title: %s  (from: %s)" % (title_text, title_token))
-            longest_text = len(title_text) - 3  # Apparently MessageTrans takes 3 for the borders - 1.5 chars each side?
-
-            # Construct data in buffer
-            titledata = title_text[:12]
-            if len(titledata) < 12:
-                titledata = titledata + '\x00' * (12 - len(titledata))
-            bufferdata_write_bytesaligned(buf, titledata)
-            bufferdata_write_byte(buf, title_fg)
-            bufferdata_write_byte(buf, title_bg)
-            bufferdata_write_byte(buf, workarea_fg)
-            bufferdata_write_byte(buf, workarea_bg)
-            width_word = buf.data[buf.offset]   # FIXME: This is pretty ugly.
-            bufferdata_write_word(buf, 0)                   # This is the width of this menu; will be fixed up later
-            bufferdata_write_word(buf, height)
-            bufferdata_write_word(buf, gap)
-
-            # Process menu items
-            while True:
-                icontext_data = data
-                icontext_token = data.string_ctrl
-                data = self.ro.memory[(data.address + len(icontext_token) + 4) & ~3]
-                menuflags = data[0].word
-                submenu_offset = data[4].word
-                iconflags = data[8].word
-                data = data[12]
-
-                (icontext, icontext_data) = self._lookup_data(icontext_data, mt)
-                longest_text = max(longest_text, len(icontext))
-
-                if submenu_offset:
-                    submenu_address = menu_base[submenu_offset].address
-                else:
-                    submenu_address = 0
-
-                bufferdata_write_word(buf, menuflags)
-                bufferdata_write_word(buf, submenu_address)
-                bufferdata_write_word(buf, iconflags)
-                # Icon data
-                if iconflags & (1<<8):  # Indirected (FIXME: Use symbol)
-                    # Indirected content
-                    # FIXME: Make it possible to read data from the buffer.
-                    if buf.offset + 12 <= buf.limit:
-                        # We can read the workspace safely
-                        if menuflags & (1<<2):  # Writeable (FIXME: Use symbol)
-                            indbuffer = self.ro.memory[buf.data.read_word(offset=buf.offset)]
-                            validation = buf.data.read_word(offset=buf.offset + 4)
-                            indbuffer_size = buf.data.read_word(offset=buf.offset + 8)
-                            icondata = icontext[:indbuffer_size - 1]
-                            indbuffer.string = icondata
-                            icontext_data = indbuffer
-                            if self.debug_messagetrans:
-                                print("    Menu item writeable: %s  (from: %s)" % (icondata, icontext_token))
-                        else:
-                            validation = 0
-                            indbuffer_size = len(icontext) + 1
-                            if self.debug_messagetrans:
-                                print("    Menu item indirect: %s  (from: %s)" % (icontext, icontext_token))
-                        bufferdata_write_word(buf, icontext_data.address)
-                        bufferdata_write_word(buf, validation)
-                        bufferdata_write_word(buf, indbuffer_size)
-                    else:
-                        # Ran out of space, so just write some words to make it out to the right size
-                        bufferdata_write_word(buf, 0)
-                        bufferdata_write_word(buf, 0)
-                        bufferdata_write_word(buf, 0)
-                else:
-                    icondata = icontext[:12]
-                    if self.debug_messagetrans:
-                        print("    Menu item inline: %s  (from: %s)" % (icondata, icontext_token))
-                    if len(icondata) < 12:
-                        icondata = icondata + '\x00' * (12 - len(icontext))
-                    bufferdata_write_bytesaligned(buf, icondata)
-
-                # Construct data in buffer
-                if menuflags & 128:     # FIXME: Use symbol
-                    break
-
-            if not buf.failed:
-                # Only if our data write has been successful to now do we update the menu width
-                width_word.word = longest_text * 16 + 12
-
-            return data
-        mtdesc = self.ro.memory[regs[0]]
-        mt = None
-        if self.config.support == 'full':
-            mt = self.files.lookup_mtdesc(mtdesc)
-
-        if self.debug_messagetrans:
-            print("MessageTrans_MakeMenus: Creating menu")
-
-        menus = self.ro.memory[regs[1]]
-        buffer_ptr = regs[2]
-        buffer_size = regs[3]
-
-        buf = BufferData(self.ro, self.ro.memory.range(buffer_ptr, buffer_size))
-
-        # Write all the submenu data
-        while menus.byte != 0:
-            menus = write_submenu(menus, buf)
-
-        regs[2] = buf.data[buf.offset].address
-        regs[3] = buf.limit - buf.offset
-        if buf.failed:
-            raise RISCOSSyntheticError(self.ro, "Buffer overflow in MessageTrans_MakeMenus")
-
-        return True
-*/

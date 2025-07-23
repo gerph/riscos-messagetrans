@@ -94,7 +94,7 @@ uint32_t bufferdata_remaining(bufferdata_t *buf)
 {
     if (buf->failed)
         return 0;
-    return buf->limit - buf->maxoffset;
+    return buf->limit - max(buf->maxoffset, buf->offset);
 }
 
 /*************************************************** Gerph *********
@@ -105,7 +105,7 @@ uint32_t bufferdata_remaining(bufferdata_t *buf)
  ******************************************************************/
 uint32_t bufferdata_required(bufferdata_t *buf)
 {
-    return buf->maxoffset;
+    return max(buf->maxoffset, buf->offset);
 }
 
 /*************************************************** Gerph *********
