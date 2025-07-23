@@ -1,0 +1,304 @@
+
+        AREA    |Test$$Code|, CODE
+
+        GET     hdr.swis
+        GET     hdr.printmacros
+        GET     hdr.modhand
+        GET     hdr.macros
+        GET     hdr.menus
+
+mtdesc_len * 16
+mtdata_len * 256
+smalldata_len * 256
+tinydata_len * 8
+
+messagetrans ROUT
+        Push    "lr"
+        MOV     r10, r1                     ; r10 -> args
+        ADRL    r9, mtdesc                  ; r9 -> the message trans descriptor
+
+        MOV     r4, #0                      ; substitute parameter
+        MOV     r5, #0                      ; substitute parameter
+        MOV     r6, #0                      ; substitute parameter
+        MOV     r7, #0                      ; substitute parameter
+
+10
+        ADR     lr, %BT10
+        LDRB    r0, [r10], #1
+        TEQ     r0, #'o'                    ; Open a file!
+        BEQ     do_open
+        TEQ     r0, #'r'                    ; Open a file using RMA
+        BEQ     do_open_rma
+        TEQ     r0, #'c'                    ; Close a file!
+        BEQ     do_close
+        TEQ     r0, #'l'                    ; Lookup a token
+        BEQ     do_lookup
+        TEQ     r0, #'g'                    ; GSLookup a token
+        BEQ     do_gslookup
+        TEQ     r0, #'e'                    ; Enumerate tokens
+        BEQ     do_enumerate
+        TEQ     r0, #'i'                    ; Info on a file
+        BEQ     do_fileinfo
+        TEQ     r0, #'m'                    ; MakeMenus
+        BEQ     do_makemenus
+        TEQ     r0, #'K'                    ; Memory checks
+        BEQ     do_check
+        TEQ     r0, #'X'                    ; Kill module
+        BEQ     do_kill
+        TEQ     r0, #0
+        BEQ     %FT90
+
+        PrintMessage "ERROR: Do not recognise parameter: "
+        SUB     r0, r10, #1
+        SWI     OS_Write0
+        SWI     OS_NewLine
+        PrintLine "Syntax: messagetrans {{[or]<filename><space>} | {i<filename><space>} | c | {l[rt]<token><space>} | {g<token><space>} | {e<pattern><space>} | {m}}*"
+90
+        Pull    "pc"
+
+
+; Skip the parameter up to a space and return its pointer in R1
+skip_param SIGNATURE
+        Push    "lr"
+        MOV     r1, r10
+; find end of filename
+10
+        LDRB    r0, [r10], #1
+        TEQ     r0, #32
+        TEQNE   r0, #0
+        BNE     %BT10
+
+        TEQ     r0, #0
+        SUBEQ   r10, r10, #1
+        MOVNE   r0, #0
+        STRNEB  r0, [r10, #-1]
+        Pull    "pc"
+
+
+do_kill SIGNATURE
+        Push    "r1, lr"
+
+        PrintLine "RMKill MessageTrans"
+        XSWI    OS_Module, #ModHandReason_Delete, $MessageTrans
+        Pull    "r1, pc"
+
+
+
+do_fileinfo SIGNATURE
+        Push    "lr"
+        BL      skip_param
+; r1 -> filename to open
+
+        SWI     MessageTrans_FileInfo
+        PrintMessage "FileInfo gave flags: "
+        PrintHex r0
+        SWI     OS_NewLine
+
+        PrintMessage "and buffer size required: "
+        PrintInteger r2
+        SWI     OS_NewLine
+        Pull    "pc"
+
+
+
+do_open SIGNATURE
+        Push    "lr"
+        BL      skip_param
+; r1 -> filename to open
+
+        PrintLine "Attempting OpenFile"
+
+        ADRL    r2, mtdata
+        XSWI    MessageTrans_OpenFile, r9
+
+        PrintLine "Open OK"
+        Pull    "pc"
+
+
+do_open_rma SIGNATURE
+        Push    "lr"
+        BL      skip_param
+; r1 -> filename to open
+
+        PrintLine "Attempting OpenFile"
+
+        XSWI    MessageTrans_OpenFile, r9,, 0
+
+        PrintLine "Open OK"
+        Pull    "pc"
+
+
+; Check whether the data we loaded looks ok.
+do_check SIGNATURE
+        Push    "lr"
+        BL      skip_param
+; r1 -> number of lines to report
+
+        XSWI    OS_ReadUnsigned, 10
+
+        PrintLine "Checking lines in the loaded content"
+
+        ADRL    r4, mtdata
+        MOV     r5, #0
+10
+        MOV     r0, r4
+20
+        LDRB    lr, [r4], #1
+        CMP     lr, #32
+        BHS     %BT20
+
+        PrintMessage "Line "
+        PrintInteger r5, 4
+        PrintMessage ": >"
+        SUB     r1, r4, r0
+        SUB     r1, r1, #1                  ; remove the terminator
+        SWI     OS_WriteN
+        PrintLine "<"
+
+        ADD     r5, r5, #1
+        CMP     r5, r2
+        BLO     %BT10
+
+90
+        PrintLine "Check complete"
+        Pull    "pc"
+
+
+
+do_close SIGNATURE
+        Push    "lr"
+        PrintLine "Attempting CloseFile"
+
+        XSWI    MessageTrans_CloseFile, r9
+
+        PrintLine "Close OK"
+        Pull    "pc"
+
+
+
+do_lookup SIGNATURE
+        Push    "lr"
+        MOV     r8, #smalldata_len
+        LDRB    lr,[r10], #1                        ; buffer size
+        TEQ     lr, #'r'
+        MOVEQ   r8, #smalldata_len                  ; regular buffer size
+        TEQ     lr, #'t'
+        MOVEQ   r8, #tinydata_len                   ; very small buffer size (to cause overflow)
+        BL      skip_param
+        PrintMessage "Attempting Lookup of: "
+        PrintString r1
+        SWI     OS_NewLine
+        PrintMessage "  into buffer of length: "
+        PrintInteger r8
+        SWI     OS_NewLine
+
+        ADRL    r2, smalldata
+        XSWI    MessageTrans_Lookup, r9,,,r8
+
+        PrintMessage "  Value: >>>"
+        MOV     r0, r2
+        MOV     r1, r3
+        SWI     OS_WriteN
+        PrintLine "<<<"
+        PrintMessage "  Length: "
+        PrintInteger r3
+        SWI     OS_NewLine
+
+        Pull    "pc"
+
+
+
+do_gslookup SIGNATURE
+        Push    "lr"
+        BL      skip_param
+        PrintMessage "Attempting GSLookup of: "
+        PrintString r1
+        SWI     OS_NewLine
+
+        ADRL    r2, smalldata
+        MOV     r3, #smalldata_len
+        XSWI    MessageTrans_GSLookup, r9
+
+        PrintMessage "  Value: >>>"
+        MOV     r0, r2
+        MOV     r1, r3
+        SWI     OS_WriteN
+        PrintLine "<<<"
+
+        Pull    "pc"
+
+
+
+
+do_enumerate SIGNATURE
+        Push    "r4, lr"
+        BL      skip_param
+
+        PrintMessage "Attempting Enumeration matching: "
+        PrintString r1
+        SWI     OS_NewLine
+
+        MOV     r4, #0
+10
+        ADRL    r2, smalldata
+        MOV     r3, #smalldata_len
+        XSWI    MessageTrans_EnumerateTokens, r9
+        TEQ     r2, #0
+        BEQ     %FT99
+
+        Push    "r1"
+        PrintMessage "  Token: >>>"
+        MOV     r0, r2
+        MOV     r1, r3
+        SWI     OS_WriteN
+        PrintLine "<<<"
+        Pull    "r1"
+        B       %BT10
+
+99
+        PrintLine "Enumeration complete"
+        Pull    "r4, pc"
+
+
+
+do_makemenus SIGNATURE
+        Push    "r4, lr"
+        PrintLine "MakeMenus"
+        ADRL    r2, smalldata
+        XSWI    MessageTrans_MakeMenus, r9, ^menu, , smalldata_len
+        PrintMessage "Complete. Used buffer = "
+        RSB     r0, r3, #smalldata_len
+        PrintInteger r0
+        SWI     XOS_NewLine
+
+        ; Actually write out the content of the menus to check it's right.
+        ADRL    r0, smalldata
+        XBL     menu_show,, #0
+
+        Pull    "r4, pc"
+
+
+menu
+        MENUHEAD    "Title"
+        MENUITEM    "Item1", 0, 0                   ; regular token
+        MENUITEM    "Item2", menuflags_dotted, 0    ; missing token (uses text)
+        MENUITEM    "Item3:default", 0, 0           ; missing token (uses default)
+        MENUITEM    "Item4", 0, 0                   ; long token text (will truncate)
+        MENUITEM    "Item5", menuflags_lastitem, 0  ; regular token
+        MENUEND
+
+
+        GET     s._menu_common
+
+        ALIGN
+
+; our descriptor we want to use
+mtdesc  % mtdesc_len
+
+; some place to load the data (if we load it at all)
+mtdata % mtdata_len
+
+; a buffer to put our results into
+smalldata % smalldata_len
+
+        END

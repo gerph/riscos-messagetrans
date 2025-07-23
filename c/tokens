@@ -14,6 +14,11 @@
 #include "messagefile.h"
 #include "tokens.h"
 
+/* Configuration option for whether we error on the overflow of strings */
+/* RISC OS Classic does not error if we cannot fit the string in, it
+   insead truncates the string. */
+//#define ERROR_ON_OVERFLOW
+
 
 /*************************************************** Gerph *********
  Function:      tokens_substitute
@@ -89,5 +94,13 @@ _kernel_oserror *tokens_substitute(messagefilefound_t *found,
         /* It fit into their buffer, so we can return success */
         return NULL;
     }
+#ifdef ERROR_ON_OVERFLOW
     return err_BufferOverflow;
+#else
+    /* Truncate the string rather than error */
+    if (usedp)
+        *usedp = size;
+    buffer[size - 1] = '\0';
+    return NULL;
+#endif
 }

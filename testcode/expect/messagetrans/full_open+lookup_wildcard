@@ -1,0 +1,6 @@
+Attempting OpenFile
+Open OK
+Attempting Lookup of: Wildcard1
+  into buffer of length: 256
+  Value: >>>Matched wildcard<<<
+  Length: 16

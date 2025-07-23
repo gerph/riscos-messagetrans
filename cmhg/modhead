@@ -47,7 +47,8 @@ error-base: &ac0    ; reservd up to &B00
 error-identifiers: \
         err_BufferOverflow( &1e5, "BufferOverflow:Not enough space in buffer for expansion"),
         err_BufferOverflowMakeMenus( &1e5, "BufferOverflowMakeMenus:Not enough space in buffer for MakeMenus"),
-        err_NoMemory( &0, "NoMemory:Not enough memory for GSTrans lookup"), ; FIXME: get an error number
+        err_NoMemoryGS( &0, "GSNoMemoryGS:Not enough memory for GSTrans lookup"), ; FIXME: get an error number
+        err_NoMemoryLoad( &0, "NoMemoryLoad:Not enough memory to load message file"), ; FIXME: get an error number
         err_MessageTransSyntaxDescriptor( &ac0, "SyntaxDescriptor:Bad MessageTrans descriptor"),
         err_MessageTransSyntaxCorrupt( &ac0, "Syntax:Corrupt MessageTrans descriptor"),
         err_MessageTransFileOpen( &ac1, "FileOpen:Could not open message file"),
