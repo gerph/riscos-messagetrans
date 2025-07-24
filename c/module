@@ -23,6 +23,7 @@
 #include "errorbufs.h"
 #include "gstrans.h"
 #include "menu.h"
+#include "global.h"
 
 /* Define this to debug this file */
 //#define DEBUG
@@ -51,6 +52,7 @@
 _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 {
     _kernel_oserror *err = NULL;
+    global_init();
     dprintf("MessageTrans initialised\n");
     return err;
 }
@@ -107,6 +109,8 @@ _kernel_oserror *SWI_FileInfo(int number, _kernel_swi_regs *regs, void *pw)
     MessageTrans_FileFlags flags;
     int32_t size;
 
+    dprintf("MessageTrans_FileInfo %s\n", file_name);
+
     size = messagefile_size(file_name);
     if (size == -1)
         return err_MessageTransFileOpen;
@@ -150,7 +154,7 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *regs, void *pw)
     messagefiledata_t mfd;
     int32_t size;
 
-    dprintf("Opening message file %s\n", file_name);
+    dprintf("MessageTrans_OpenFile %s\n", file_name);
 
     /* Ensure that if we return, the magic is NEVER valid */
     cb->magic = 0;
@@ -275,14 +279,22 @@ _kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *regs, void *pw)
     args[2] = (const char *)regs->r[6];
     args[3] = (const char *)regs->r[7];
 
+retry:
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
-    dprintf("Lookup: token=%s\n", token ? token : "<NULL>");
+    dprintf("MessageTrans_Lookup: cb=%p, token=%s\n", cb, token ? token : "<NULL>");
 
     found = messagefile_find(mfd, token);
     if (found.value == NULL)
+    {
+        if (cb != NULL && global_valid())
+        {
+            cb = NULL;
+            goto retry;
+        }
         return err_MessageTransTokenNotFound;
+    }
 
     if (buffer == NULL)
     {
@@ -340,12 +352,15 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
     int32_t size = (int32_t)regs->r[3];
     /* Output registers */
     int32_t remaining;
+    int32_t required;
     messagefiledata_t *mfd;
     bufferdata_t buf;
 
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
+
+    dprintf("MakeMenus: Given %i byte\n", size);
 
     bufferdata_init(&buf, buffer, size);
 
@@ -354,7 +369,9 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
         return err;
 
     remaining = bufferdata_remaining(&buf);
+    required = bufferdata_required(&buf);
 
+    dprintf("MakeMenus: Required %i bytes, %i remaining, %i given\n", required, remaining, size);
     if (bufferdata_failed(&buf))
         err = err_BufferOverflowMakeMenus;
 
@@ -392,6 +409,8 @@ _kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *regs, void *pw)
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
+
+    dprintf("MessageTrans_CloseFile %p\n", cb);
 
     err = descriptor_destroy(cb);
     return err;
@@ -526,12 +545,20 @@ _kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *regs, void *pw)
     args[2] = (const char *)regs->r[6];
     args[3] = (const char *)regs->r[7];
 
+retry:
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
     found = messagefile_find(mfd, error->errmess);
     if (found.value == NULL)
+    {
+        if (cb != NULL && global_valid())
+        {
+            cb = NULL;
+            goto retry;
+        }
         return err_MessageTransTokenNotFound;
+    }
 
     if (out_error == NULL)
     {
@@ -603,12 +630,20 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
     args[2] = (const char *)regs->r[6];
     args[3] = (const char *)regs->r[7];
 
+retry:
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
     found = messagefile_find(mfd, token);
     if (found.value == NULL)
+    {
+        if (cb != NULL && global_valid())
+        {
+            cb = NULL;
+            goto retry;
+        }
         return err_MessageTransTokenNotFound;
+    }
 
     if (buffer == NULL)
     {
@@ -724,7 +759,7 @@ _kernel_oserror *SWI_Dictionary(int number, _kernel_swi_regs *regs, void *pw)
      */
 
     /* Output registers */
-    void * dictionary;
+    void * dictionary = NULL;
 
     /* FIXME: SWI not yet implemented */
 

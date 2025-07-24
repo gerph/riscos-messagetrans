@@ -1,0 +1,34 @@
+/*******************************************************************
+ * File:        global
+ * Purpose:     Global messages handling
+ * Author:      Gerph
+ * Date:        23 Jul 2025
+ ******************************************************************/
+
+#ifndef GLOBAL_H
+#define GLOBAL_H
+
+#include <stdbool.h>
+#include "types.h"
+
+
+/*************************************************** Gerph *********
+ Function:      global_init
+ Description:   Initialise the Global messages descriptor
+ Parameters:    none
+ Returns:       none
+ ******************************************************************/
+void global_init(void);
+
+/*************************************************** Gerph *********
+ Function:      global_getcb
+ Description:   Read the global control block
+ Parameters:    none
+ Returns:       pointer to the global control block (or NULL if none available)
+ ******************************************************************/
+MessageTrans_ControlBlock *global_getcb(void);
+
+#define global_valid() ((bool)(global_getcb() != NULL))
+
+#endif
+

@@ -24,6 +24,7 @@
 #include "descriptor.h"
 #include "types.h"
 #include "messagefile.h"
+#include "global.h"
 #include "modhead.h"
 
 /* Define this to debug this file */
@@ -77,25 +78,31 @@ static MessageTrans_ControlBlockProxied *our_chain;
 /*************************************************** Gerph *********
  Function:      descriptor_check
  Description:   Check that the descriptor is valid, and convert to message file pointer
- Parameters:    md-> the message descriptor
+ Parameters:    cb-> the message descriptor
                 mfdp-> the message file data reference
  Returns:       none
  ******************************************************************/
-_kernel_oserror *descriptor_check(MessageTrans_ControlBlock *md,
+_kernel_oserror *descriptor_check(MessageTrans_ControlBlock *cb,
                                   messagefiledata_t **mfdp)
 {
+    if (cb == NULL)
+    {
+        cb = global_getcb();
+        if (cb == NULL)
+            return err_MessageTransSyntaxDescriptor;
+    }
     /* Check the descriptor location */
-    if (((intptr_t)md) < 0x8000)
+    if (((intptr_t)cb) < 0x8000)
         return err_MessageTransSyntaxDescriptor;
-    if ((((intptr_t)md) & 3) != 0)
+    if ((((intptr_t)cb) & 3) != 0)
         return err_MessageTransSyntaxDescriptor;
 
-    dprintf("DescriptorCheck: magic       = &%08x\n", md->magic);
+    dprintf("DescriptorCheck: magic       = &%08x\n", cb->magic);
 
     /* Check if it is a descriptor */
-    if (md->magic == MAGIC_PROXY)
+    if (cb->magic == MAGIC_PROXY)
     {
-        MessageTrans_ControlBlockProxy *proxy = (MessageTrans_ControlBlockProxy *)md;
+        MessageTrans_ControlBlockProxy *proxy = (MessageTrans_ControlBlockProxy *)cb;
         dprintf("                 proxy to    = %p\n", proxy->real_cb);
 
         /* Proxy descriptor, so we need to bounce to the actual descriptor
@@ -110,27 +117,27 @@ _kernel_oserror *descriptor_check(MessageTrans_ControlBlock *md,
         return descriptor_check((MessageTrans_ControlBlock *)proxy->real_cb, mfdp);
     }
 
-    if (md->magic != MAGIC)
+    if (cb->magic != MAGIC)
         return err_MessageTransSyntaxDescriptor;
 
-    dprintf("                 messagefile = %p\n", md->messagefile);
-    dprintf("                 size        = &%08x\n", md->size);
+    dprintf("                 messagefile = %p\n", cb->messagefile);
+    dprintf("                 size        = &%08x\n", cb->size);
 
     /* Check the message file and size */
-    if ((((intptr_t)md->messagefile) & 3) != 0)
+    if ((((intptr_t)cb->messagefile) & 3) != 0)
         return err_MessageTransSyntaxCorrupt;
 
-    if (((intptr_t)md->messagefile) < (intptr_t)0x8000)
+    if (((intptr_t)cb->messagefile) < (intptr_t)0x8000)
         return err_MessageTransSyntaxCorrupt;
 
     /* This one might not be strictly correct, but if you have more than
      * 64K of tokens you probably should use a different way of doing the
      * message management.
      */
-    if (md->size > 0x10000)
+    if (cb->size > 0x10000)
         return err_MessageTransSyntaxCorrupt;
 
-    *mfdp = (messagefiledata_t *)&md->size;
+    *mfdp = (messagefiledata_t *)&cb->size;
 
     return NULL;
 }
@@ -140,24 +147,24 @@ _kernel_oserror *descriptor_check(MessageTrans_ControlBlock *md,
 /*************************************************** Gerph *********
  Function:      descriptor_populate
  Description:   Populate a descriptor for a messagefile
- Parameters:    md-> the message descriptor
+ Parameters:    cb-> the message descriptor
                 mfdp-> the message file data reference
  Returns:       none
  ******************************************************************/
-_kernel_oserror *descriptor_populate(MessageTrans_ControlBlock *md,
+_kernel_oserror *descriptor_populate(MessageTrans_ControlBlock *cb,
                                      messagefiledata_t *mfd)
 {
     /* Check the descriptor location */
-    if (((intptr_t)md) < 0x8000)
+    if (((intptr_t)cb) < 0x8000)
         return err_MessageTransSyntaxDescriptor;
-    if ((((intptr_t)md) & 3) != 0)
+    if ((((intptr_t)cb) & 3) != 0)
         return err_MessageTransSyntaxDescriptor;
 
-    md->magic = MAGIC;
-    md->messagefile = mfd->messagefile;
-    md->size = mfd->size;
+    cb->magic = MAGIC;
+    cb->messagefile = mfd->messagefile;
+    cb->size = mfd->size;
 #ifndef __riscos64
-    md->UNUSED = 0;
+    cb->UNUSED = 0;
 #endif
     return NULL;
 }
@@ -236,20 +243,20 @@ _kernel_oserror *descriptor_destroy(MessageTrans_ControlBlock *cb)
 /*************************************************** Gerph *********
  Function:      descriptor_populateproxy
  Description:   Populate a descriptor for another descriptor
- Parameters:    md-> the message descriptor
-                pmd-> the proxied message descriptor
+ Parameters:    cb-> the message descriptor
+                pcb-> the proxied message descriptor
  Returns:       pointer to error, or NULL if ok.
  ******************************************************************/
-_kernel_oserror *descriptor_populateproxy(MessageTrans_ControlBlock *md,
+_kernel_oserror *descriptor_populateproxy(MessageTrans_ControlBlock *cb,
                                           MessageTrans_ControlBlock *pmd)
 {
-    MessageTrans_ControlBlockProxy *proxy = (MessageTrans_ControlBlockProxy *)md;
+    MessageTrans_ControlBlockProxy *proxy = (MessageTrans_ControlBlockProxy *)cb;
     MessageTrans_ControlBlockProxied *real_cb = (MessageTrans_ControlBlockProxied *)pmd;
 
     /* Check the descriptor location */
-    if (((intptr_t)md) < 0x8000)
+    if (((intptr_t)cb) < 0x8000)
         return err_MessageTransSyntaxDescriptor;
-    if ((((intptr_t)md) & 3) != 0)
+    if ((((intptr_t)cb) & 3) != 0)
         return err_MessageTransSyntaxDescriptor;
 
     proxy->magic = MAGIC_PROXY;

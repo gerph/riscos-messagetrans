@@ -1,0 +1,116 @@
+/*******************************************************************
+ * File:        global
+ * Purpose:     Global messages handling
+ * Author:      Gerph
+ * Date:        23 Jul 2025
+ ******************************************************************/
+
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+
+#include "types.h"
+#include "messagefile.h"
+#include "descriptor.h"
+#include "global.h"
+
+static MessageTrans_ControlBlock global_cb;
+
+static bool initialised;
+
+static const char *globalmessages = "Escape:Escape\n\
+Fatal:Internal inconsistency failure in module %0\n\
+IsAFil:'%0' is a file\n\
+IsntFil:'%0' is not a file\n\
+IsADir:'%0' is a directory\n\
+IsntDir:'%0' is not a directory\n\
+NoFile:File '%0' not found\n\
+NoDir:Directory '%0' not found\n\
+NoAny:'%0' not found\n\
+TypsBad:Object types (file and directory) don't match\n\
+BadRen:Bad rename\n\
+BadAcc:The action requested and the object's access capability are not compatible\n\
+OpnFils:Too many open files\n\
+BadName:The name '%0' is not acceptable, the character '%1' is not allowed\n\
+LongNam:The name '%0' is too long, %1 is the maximum acceptable length\n\
+Channel:Handle is either illegal or has been closed\n\
+BadSWI:SWI value out of range for module %0\n\
+ModInUs:The module '%0' is currently in use\n\
+StrOFlo:String too long\n\
+NumOFlo:Number too big\n\
+BufOFlo:Buffer overflow\n\
+BadStn:Bad station number\n\
+BadNet:Bad network number\n\
+FullNet:Full network address required\n\
+NoEco:No 'Econet' installed\n\
+BadRead:No readable memory at this address\n\
+BadWrt:No writable memory at this address\n\
+DataLst:Data has been unavoidably lost, the file or directory may not be correct\n\
+BadFSOp:Bad operation on the '%0' filing system\n\
+FSNoRd:The '%0' filing system is write only\n\
+FSNoWrt:The '%0' filing system is read only\n\
+FSInUse:The '%0' filing system is in use\n\
+BadAddress:Bad address\n\
+NoStore:Not enough memory\n\
+RAMLoadC:ROM application %0 cannot be RAM loaded\n\
+DDS0:Dir. %0 Option 00 (Off) %1\n\
+DDS1:Dir. %0 Option 01 (Load) %1\n\
+DDS2:Dir. %0 Option 02 (Run) %1\n\
+DDS3:Dir. %0 Option 03 (Exec) %1\n\
+CSDS:CSD  %0\n\
+CSDSU:CSD  %0\"Unset\"\n\
+LDS:Lib. %0\n\
+LDSU:Lib. %0\"Unset\"\n\
+URDS:URD  %0\n\
+URDSU:URD  %0\"Unset\"\n\
+Dr:Directory\n\
+App:Application\n\
+ExDt:%24:%MI:%SE %DY-%M3-%CE%YR\n\
+ExLdEx:   %0 %1\n\
+UseDesk:Use *Desktop to start %0\n\
+AppQuit:You must quit the %0 application before you can kill the %0 module\n\
+NoMem:Not enough memory\n\
+BadHard:Unsupported hardware configuration\n\
+BadParm:Bad parameters\n\
+NoWimp:Window manager not present / too old\n\
+NeedMod:Module %0 cannot start without module %1\n\
+NumParm:Invalid number of parameters\n\
+";
+
+
+/*************************************************** Gerph *********
+ Function:      global_init
+ Description:   Initialise the Global messages descriptor
+ Parameters:    none
+ Returns:       none
+ ******************************************************************/
+void global_init(void)
+{
+    _kernel_oserror *err;
+    uint32_t size = strlen(globalmessages);
+    messagefiledata_t mfd;
+
+    mfd.messagefile = (messagefile_t *)globalmessages;
+    mfd.size = size;
+
+    initialised = false;
+    err = descriptor_populate(&global_cb, &mfd);
+    if (err)
+        initialised = false;
+    else
+        initialised = true;
+}
+
+/*************************************************** Gerph *********
+ Function:      global_getcb
+ Description:   Read the global control block
+ Parameters:    none
+ Returns:       pointer to the global control block (or NULL if none available)
+ ******************************************************************/
+MessageTrans_ControlBlock *global_getcb(void)
+{
+    if (initialised)
+        return &global_cb;
+    else
+        return NULL;
+}
