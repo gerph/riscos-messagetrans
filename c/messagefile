@@ -207,13 +207,15 @@ match:
     found.value = search;
 
     /* Now we need to find the length */
-    while (*search++ != '\n' && search < end)
-        ; /* All in the while */
+    while (search < end && *search != '\0' && *search != '\r' && *search != '\n')
+    {
+        search++;
+    }
 
-    if (search > end)
+    if (search >= end)
         goto fail;
 
-    found.len = search - found.value - 1;
+    found.len = search - found.value;
     return found;
 }
 

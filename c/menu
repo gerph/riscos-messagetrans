@@ -77,7 +77,7 @@ const uint8_t *menu_writesubmenu(messagefiledata_t *md, const uint8_t *menus, bu
 
     data += 6; /* Skip the menu header parameters */
 
-    dprintf("  Menu title: %.*s  (from: %s)\n", title_len, title_text, title_token);
+    dprintf("  Menu title: %.*s  (%i chars, from: %s)\n", title_len, title_text, title_len, title_token);
 
     // Write menu header
     bufferdata_write_bytespadded(buf, title_text, title_len < 12 ? title_len : 12, 12);
@@ -113,7 +113,8 @@ const uint8_t *menu_writesubmenu(messagefiledata_t *md, const uint8_t *menus, bu
         else
         {
             icontext_text = found.value;
-            icontext_len = strcspn(icontext_text, "\r\n");
+            icontext_len = found.len;
+            dprintf("  Found token, len = %i\n", icontext_len);
         }
 
         longest_text = max(longest_text, icontext_len);
@@ -130,7 +131,7 @@ const uint8_t *menu_writesubmenu(messagefiledata_t *md, const uint8_t *menus, bu
             if (bufferdata_remaining(buf) >= 12)
             {
                 uint8_t *indirect_buffer;
-                uint8_t *indirect_validation;
+                uint8_t *indirect_validation = NULL;
                 uint32_t indirect_size;
                 // We can safely read and write to the buffer
                 if (menuflags & MenuFlag_Writeable)
@@ -140,19 +141,18 @@ const uint8_t *menu_writesubmenu(messagefiledata_t *md, const uint8_t *menus, bu
                     indirect_validation = (void *)indirect_data[1];
                     indirect_size = indirect_data[2];
 
-                    if (indirect_size > icontext_len + 1)
+                    if (indirect_size - 1 < icontext_len)
                         icontext_len = indirect_size - 1;
                     memcpy(indirect_buffer, icontext_text, icontext_len);
-                    indirect_buffer[icontext_len ] = '\0';
+                    indirect_buffer[icontext_len] = '\0';
 
-                    dprintf("    Menu item writeable: %.*s  (from: %s)\n", icontext_len, indirect_buffer, icontext_token);
+                    dprintf("    Menu item writeable: %.*s  (%i chars, from: %s)\n", icontext_len, indirect_buffer, icontext_len, icontext_token);
                 }
                 else
                 {
                     indirect_buffer = (uint8_t*)icontext_text;
-                    indirect_validation = NULL;
                     indirect_size = icontext_len + 1;
-                    dprintf("    Menu item indirect: %.*s  (from: %s)\n", icontext_len, indirect_buffer, icontext_token);
+                    dprintf("    Menu item indirect: %.*s  (%i chars, from: %s)\n", icontext_len, indirect_buffer, icontext_len, icontext_token);
                 }
                 bufferdata_write_word(buf, (uint32_t)indirect_buffer);
                 bufferdata_write_word(buf, (uint32_t)indirect_validation);
@@ -199,5 +199,14 @@ _kernel_oserror *menu_writemenus(messagefiledata_t *md, const uint8_t *menus, bu
     {
         menus = menu_writesubmenu(md, menus, buf);
     }
+#if 0
+    /* Only if we've manually debugging the content of the menu buffers */
+    {
+        static int counter = 0;
+        char filename[256];
+        sprintf(filename, "menus%d", counter++);
+        _swix(OS_File, _INR(0,5), 10, filename, 0xffd, 0, bufferdata_address(buf, 0, false), bufferdata_address(buf, 0, true));
+    }
+#endif
     return NULL;
 }
