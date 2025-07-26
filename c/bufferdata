@@ -315,12 +315,13 @@ uint32_t bufferdata_write_bytespadded(bufferdata_t *buf, const void *data, uint3
     buf->offset += paddinglen;
     if (buf->offset > buf->limit)
         buf->failed = true;
-    if (paddinglen > datalen)
+    if (paddinglen < datalen)
         datalen = paddinglen;
     if (!buf->failed)
     {
         memcpy((char *)&buf->data[offset], data, datalen);
         offset += datalen;
+        paddinglen -= datalen;
         memset(&buf->data[offset], 0, paddinglen);
     }
 
