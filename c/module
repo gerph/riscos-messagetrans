@@ -13,6 +13,7 @@
 
 #include "kernel.h"
 #include "riscos/NewErrors.h"
+#include "riscos/Services.h"
 
 #include "modhead.h"
 #include "types.h"
@@ -24,6 +25,7 @@
 #include "gstrans.h"
 #include "menu.h"
 #include "global.h"
+#include "os.h"
 
 /* Define this to debug this file */
 //#define DEBUG
@@ -53,6 +55,7 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 {
     _kernel_oserror *err = NULL;
     global_init();
+    os_addcallback(StartupCallback_Entry, pw);
     dprintf("MessageTrans initialised\n");
     return err;
 }
@@ -73,9 +76,26 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
  **************************************************************************/
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
+    os_removecallback(StartupCallback_Entry, pw);
     gstrans_final();
     descriptor_final();
     dprintf("MessageTrans finalised\n");
+    return NULL;
+}
+
+
+/***************************************************************************
+ * Function:     StartupCallback_Handler
+ * Description:  Generic handler function
+ * Parameters:   r  = pointer to register block on entry
+ *               pw = private word for module
+ * On exit:      Update r to alter return values
+ *               Return NULL to return with V clear
+ *               Return an error pointer to set V and r0
+ **************************************************************************/
+_kernel_oserror *StartupCallback_Handler(_kernel_swi_regs *r, void *pw)
+{
+    os_servicecall2(0, Service_MessageFileClosed);
     return NULL;
 }
 
@@ -374,8 +394,10 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
     dprintf("MakeMenus: Required %i bytes, %i remaining, %i given\n", required, remaining, size);
     if (bufferdata_failed(&buf))
         err = err_BufferOverflowMakeMenus;
+    else
+        remaining = 0; /* The documentation says we return 0 if we were successful */
 
-    regs->r[2] = (int)bufferdata_address(&buf, 0, true);
+    regs->r[2] = (int)bufferdata_address(&buf, 0, true); /* End of menu structure */
     regs->r[3] = (int)remaining;  // .Int
     return err;
 }

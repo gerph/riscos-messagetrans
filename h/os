@@ -1,0 +1,42 @@
+/*******************************************************************
+ * File:        os
+ * Purpose:     OS interfaces
+ * Author:      Gerph
+ * Date:        26 Jul 2025
+ ******************************************************************/
+
+#ifndef OS_H
+#define OS_H
+
+#include <stdint.h>
+#include "swis.h"
+
+/*************************************************** Gerph *********
+ Function:      os_servicecall2
+ Description:   Issue a service call with 2 parameters
+ Parameters:    r0 = value of r0
+                reason = service call reason
+ Returns:       pointer to error, or NULL if converted ok
+ ******************************************************************/
+_kernel_oserror *os_servicecall2(uint32_t r0, int reason);
+
+/*************************************************** Gerph *********
+ Function:      os_addcallback
+ Description:   Add a callback
+ Parameters:    func-> the veneer to call
+                r12 = private word for r12
+ Returns:       pointer to error, or NULL if converted ok
+ ******************************************************************/
+_kernel_oserror *os_addcallback(void (*func)(void), void *r12);
+
+
+/*************************************************** Gerph *********
+ Function:      os_removecallback
+ Description:   Remove a callback
+ Parameters:    func-> the veneer to call
+                r12 = private word for r12
+ Returns:       pointer to error, or NULL if converted ok
+ ******************************************************************/
+_kernel_oserror *os_removecallback(void (*func)(void), void *r12);
+
+#endif

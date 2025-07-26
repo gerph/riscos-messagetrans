@@ -44,6 +44,7 @@ OBJS       = o.modhead \
              o.tokens \
              o.errorbufs \
              o.gstrans \
+             o.os \
              o.global \
              o.module
 

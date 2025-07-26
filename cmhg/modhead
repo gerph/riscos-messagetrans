@@ -148,4 +148,15 @@ swi-decoding-table: MessageTrans \
 ;                                    Service_DCIDriverStatus,
 ;                                    Service_InternetStatus
 
+; Generic veneers are used to provide a simple C environment for SVC and IRQ
+; modes. You should register the Entry routine as the external interface (ie
+; provide it as the code address to call). The Handler routine will be
+; called from this. Parameters for the veneer may be specified in brackets
+; in the same form as command keywords :
+;   ({<field>: <value>})
+; Field names:
+;   private-word: <register> Private word register
+;   carry-capable:           Veneer is capable of handling returning of the
+;                            carry flag
+generic-veneers: StartupCallback_Entry/StartupCallback_Handler
 
