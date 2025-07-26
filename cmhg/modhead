@@ -7,14 +7,14 @@
 ; You should give your module a sensible name which describes its purpose
 ; both accurately and concisely. You must register any module names you use
 ; if they are to be distributed.
-title-string: Messagetrans
+title-string: MessageTrans
 
 ; The help-string is the name that is displayed to the user in *Help Modules
 ; and other places that a more readable name is required. You should attempt
 ; to make this a readable version of the title-string, and - at worst - use
 ; the same name as in the title-string. The tail message may be used to
 ; indicate a variant of the module, or a copyright string.
-help-string: Messagetrans Module_MajorVersion_CMHG Module_MinorVersion_CMHG
+help-string: MessageTrans Module_MajorVersion_CMHG Module_MinorVersion_CMHG
 
 ; If you supply SWIs in your module, you must provide a base number at which
 ; these start. Each chunk is 64 entries long and must be registered if the
