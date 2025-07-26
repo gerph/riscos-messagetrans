@@ -106,36 +106,42 @@ _kernel_oserror *descriptor_check(MessageTrans_ControlBlock *cb,
         dprintf("                 proxy to    = %p\n", proxy->real_cb);
 
         /* Proxy descriptor, so we need to bounce to the actual descriptor
-         * after a check of the parameters.
+         * which will check of the parameters.
          */
-        if ((((intptr_t)proxy->real_cb) & 3) != 0)
-            return err_MessageTransSyntaxCorrupt;
-
-        if (((intptr_t)proxy->real_cb) < (intptr_t)0x8000)
-            return err_MessageTransSyntaxCorrupt;
-
         return descriptor_check((MessageTrans_ControlBlock *)proxy->real_cb, mfdp);
     }
 
     if (cb->magic != MAGIC)
+    {
+        dprintf("  Descriptor is invalid\n");
         return err_MessageTransSyntaxDescriptor;
+    }
 
     dprintf("                 messagefile = %p\n", cb->messagefile);
     dprintf("                 size        = &%08x\n", cb->size);
 
     /* Check the message file and size */
     if ((((intptr_t)cb->messagefile) & 3) != 0)
+    {
+        dprintf("  Descriptor has corrupt messagefile address (unaligned)\n");
         return err_MessageTransSyntaxCorrupt;
+    }
 
     if (((intptr_t)cb->messagefile) < (intptr_t)0x8000)
+    {
+        dprintf("  Descriptor has corrupt messagefile (too low)\n");
         return err_MessageTransSyntaxCorrupt;
+    }
 
     /* This one might not be strictly correct, but if you have more than
      * 64K of tokens you probably should use a different way of doing the
      * message management.
      */
     if (cb->size > 0x10000)
+    {
+        dprintf("  Descriptor has corrupt messagefile (overlarge)\n");
         return err_MessageTransSyntaxCorrupt;
+    }
 
     *mfdp = (messagefiledata_t *)&cb->size;
 
