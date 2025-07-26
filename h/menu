@@ -1,0 +1,31 @@
+/*******************************************************************
+ * File:        menu
+ * Purpose:     Menu handling
+ * Author:      Gerph
+ * Date:        22 Jul 2025
+ ******************************************************************/
+
+#ifndef MENU_H
+#define MENU_H
+
+#include <stdint.h>
+#include <stdbool.h>
+
+#include "kernel.h"
+
+#include "messagefile.h"
+#include "bufferdata.h"
+
+
+/*************************************************** Gerph *********
+ Function:      menu_writemenus
+ Description:   Write the menus supplied by the user
+ Parameters:    md-> the message data we're processing
+                menus-> the source menu data
+                buf-> the destination buffer data to populate
+ Returns:       pointer to error, or NULL if no error returned
+ ******************************************************************/
+_kernel_oserror *menu_writemenus(messagefiledata_t *md, const uint8_t *menus, bufferdata_t *buf);
+
+
+#endif

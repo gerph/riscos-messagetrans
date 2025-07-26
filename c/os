@@ -1,0 +1,59 @@
+/*******************************************************************
+ * File:        os
+ * Purpose:     OS interfaces
+ * Author:      Gerph
+ * Date:        26 Jul 2025
+ ******************************************************************/
+
+#include <stdint.h>
+#include <stdlib.h>
+#include "swis.h"
+
+#include "os.h"
+
+/*************************************************** Gerph *********
+ Function:      os_servicecall2
+ Description:   Issue a service call with 2 parameters
+ Parameters:    r0 = value of r0
+                reason = service call reason
+ Returns:       pointer to error, or NULL if converted ok
+ ******************************************************************/
+_kernel_oserror *os_servicecall2(uint32_t r0, int reason)
+{
+    _kernel_oserror *err;
+    err = _swix(OS_ServiceCall, _INR(0, 1),
+                                r0, reason);
+    return err;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      os_addcallback
+ Description:   Add a callback
+ Parameters:    func-> the veneer to call
+                r12 = private word for r12
+ Returns:       pointer to error, or NULL if converted ok
+ ******************************************************************/
+_kernel_oserror *os_addcallback(void (*func)(void), void *r12)
+{
+    _kernel_oserror *err;
+    err = _swix(OS_AddCallBack, _INR(0, 1),
+                                func, r12);
+    return err;
+}
+
+
+/*************************************************** Gerph *********
+ Function:      os_removecallback
+ Description:   Remove a callback
+ Parameters:    func-> the veneer to call
+                r12 = private word for r12
+ Returns:       pointer to error, or NULL if converted ok
+ ******************************************************************/
+_kernel_oserror *os_removecallback(void (*func)(void), void *r12)
+{
+    _kernel_oserror *err;
+    err = _swix(OS_RemoveCallBack, _INR(0, 1),
+                                   func, r12);
+    return err;
+}

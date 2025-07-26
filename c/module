@@ -13,14 +13,19 @@
 
 #include "kernel.h"
 #include "riscos/NewErrors.h"
+#include "riscos/Services.h"
 
 #include "modhead.h"
 #include "types.h"
 #include "messagefile.h"
+#include "bufferdata.h"
 #include "descriptor.h"
 #include "tokens.h"
 #include "errorbufs.h"
 #include "gstrans.h"
+#include "menu.h"
+#include "global.h"
+#include "os.h"
 
 /* Define this to debug this file */
 //#define DEBUG
@@ -49,6 +54,8 @@
 _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
 {
     _kernel_oserror *err = NULL;
+    global_init();
+    os_addcallback(StartupCallback_Entry, pw);
     dprintf("MessageTrans initialised\n");
     return err;
 }
@@ -69,9 +76,26 @@ _kernel_oserror *Mod_Init(const char *tail, int podule_base, void *pw)
  **************************************************************************/
 _kernel_oserror *Mod_Final(int fatal, int podule_base, void *pw)
 {
+    os_removecallback(StartupCallback_Entry, pw);
     gstrans_final();
     descriptor_final();
     dprintf("MessageTrans finalised\n");
+    return NULL;
+}
+
+
+/***************************************************************************
+ * Function:     StartupCallback_Handler
+ * Description:  Generic handler function
+ * Parameters:   r  = pointer to register block on entry
+ *               pw = private word for module
+ * On exit:      Update r to alter return values
+ *               Return NULL to return with V clear
+ *               Return an error pointer to set V and r0
+ **************************************************************************/
+_kernel_oserror *StartupCallback_Handler(_kernel_swi_regs *r, void *pw)
+{
+    os_servicecall2(0, Service_MessageFileClosed);
     return NULL;
 }
 
@@ -104,6 +128,8 @@ _kernel_oserror *SWI_FileInfo(int number, _kernel_swi_regs *regs, void *pw)
     /* Output registers */
     MessageTrans_FileFlags flags;
     int32_t size;
+
+    dprintf("MessageTrans_FileInfo %s\n", file_name);
 
     size = messagefile_size(file_name);
     if (size == -1)
@@ -148,7 +174,7 @@ _kernel_oserror *SWI_OpenFile(int number, _kernel_swi_regs *regs, void *pw)
     messagefiledata_t mfd;
     int32_t size;
 
-    dprintf("Opening message file %s\n", file_name);
+    dprintf("MessageTrans_OpenFile %s\n", file_name);
 
     /* Ensure that if we return, the magic is NEVER valid */
     cb->magic = 0;
@@ -273,14 +299,22 @@ _kernel_oserror *SWI_Lookup(int number, _kernel_swi_regs *regs, void *pw)
     args[2] = (const char *)regs->r[6];
     args[3] = (const char *)regs->r[7];
 
+retry:
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
-    dprintf("Lookup: token=%s\n", token ? token : "<NULL>");
+    dprintf("MessageTrans_Lookup: cb=%p, token=%s\n", cb, token ? token : "<NULL>");
 
     found = messagefile_find(mfd, token);
     if (found.value == NULL)
+    {
+        if (cb != NULL && global_valid())
+        {
+            cb = NULL;
+            goto retry;
+        }
         return err_MessageTransTokenNotFound;
+    }
 
     if (buffer == NULL)
     {
@@ -328,26 +362,43 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
      *     R1 -> menus
      *     R2 = buffer
      *     R3 = size
-     * <=  R3 = used
+     * <=  R3 = remaining (NOTE: oslib says this is the used space)
      */
 
     /* Input registers */
     MessageTrans_ControlBlock *cb = (MessageTrans_ControlBlock *)regs->r[0];
-    void * menus = (void *)regs->r[1];
-    char * buffer = (char *)regs->r[2];
+    const void * menus = (void *)regs->r[1];
+    uint8_t * buffer = (uint8_t *)regs->r[2];
     int32_t size = (int32_t)regs->r[3];
     /* Output registers */
-    int32_t used;
+    int32_t remaining;
+    int32_t required;
     messagefiledata_t *mfd;
+    bufferdata_t buf;
 
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
 
-    /* FIXME: SWI not yet implemented */
-    err = err_MessageTransTokenNotFound; /* Fake error whilst not implemented */
+    dprintf("MakeMenus: Given %i byte\n", size);
 
-    regs->r[3] = (int)used;  // .Int
+    bufferdata_init(&buf, buffer, size);
+
+    err = menu_writemenus(mfd, menus, &buf);
+    if (err)
+        return err;
+
+    remaining = bufferdata_remaining(&buf);
+    required = bufferdata_required(&buf);
+
+    dprintf("MakeMenus: Required %i bytes, %i remaining, %i given\n", required, remaining, size);
+    if (bufferdata_failed(&buf))
+        err = err_BufferOverflowMakeMenus;
+    else
+        remaining = 0; /* The documentation says we return 0 if we were successful */
+
+    regs->r[2] = (int)bufferdata_address(&buf, 0, true); /* End of menu structure */
+    regs->r[3] = (int)remaining;  // .Int
     return err;
 }
 
@@ -380,6 +431,8 @@ _kernel_oserror *SWI_CloseFile(int number, _kernel_swi_regs *regs, void *pw)
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
+
+    dprintf("MessageTrans_CloseFile %p\n", cb);
 
     err = descriptor_destroy(cb);
     return err;
@@ -514,12 +567,20 @@ _kernel_oserror *SWI_ErrorLookup(int number, _kernel_swi_regs *regs, void *pw)
     args[2] = (const char *)regs->r[6];
     args[3] = (const char *)regs->r[7];
 
+retry:
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
     found = messagefile_find(mfd, error->errmess);
     if (found.value == NULL)
+    {
+        if (cb != NULL && global_valid())
+        {
+            cb = NULL;
+            goto retry;
+        }
         return err_MessageTransTokenNotFound;
+    }
 
     if (out_error == NULL)
     {
@@ -591,12 +652,20 @@ _kernel_oserror *SWI_GSLookup(int number, _kernel_swi_regs *regs, void *pw)
     args[2] = (const char *)regs->r[6];
     args[3] = (const char *)regs->r[7];
 
+retry:
     err = descriptor_check(cb, &mfd);
     if (err)
         return err;
     found = messagefile_find(mfd, token);
     if (found.value == NULL)
+    {
+        if (cb != NULL && global_valid())
+        {
+            cb = NULL;
+            goto retry;
+        }
         return err_MessageTransTokenNotFound;
+    }
 
     if (buffer == NULL)
     {
@@ -712,7 +781,7 @@ _kernel_oserror *SWI_Dictionary(int number, _kernel_swi_regs *regs, void *pw)
      */
 
     /* Output registers */
-    void * dictionary;
+    void * dictionary = NULL;
 
     /* FIXME: SWI not yet implemented */
 

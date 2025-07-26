@@ -1,0 +1,212 @@
+/*******************************************************************
+ * File:        menu
+ * Purpose:     Menu handling
+ * Author:      Gerph
+ * Date:        22 Jul 2025
+ ******************************************************************/
+
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+
+#include "kernel.h"
+
+#include "messagefile.h"
+#include "bufferdata.h"
+
+
+/* Define this to debug this file */
+//#define DEBUG
+
+
+#ifdef DEBUG
+#define dprintf if (1) printf
+#else
+#define dprintf if (0) printf
+#endif
+
+
+#define max(_x, _y) (((_x) > (_y)) ? (_x) : (_y))
+
+#define IconFlag_Indirect   (1u<<8)
+#define MenuFlag_Writeable  (1u<<2)
+#define MenuFlag_Last       (1u<<7)
+
+
+
+/*************************************************** Gerph *********
+ Function:      menu_writesubmenu
+ Description:   Write the contents of one menu to the buffer
+ Parameters:    md-> the message data we're processing
+                menus-> the menu to process
+                buf-> the buffer to populate
+ Returns:       pointer to the next menu to process
+ ******************************************************************/
+const uint8_t *menu_writesubmenu(messagefiledata_t *md, const uint8_t *menus, bufferdata_t *buf)
+{
+    void *menu_base = bufferdata_address(buf, 0, true);
+    int longest_text = 0;
+    const char *title_token = (const char *)menus;
+    int title_len = strcspn(title_token, "\r\n");
+    const uint8_t *data = menus + title_len + 1;
+
+    uint8_t title_fg = data[0];
+    uint8_t title_bg = data[1];
+    uint8_t workarea_fg = data[2];
+    uint8_t workarea_bg = data[3];
+    uint8_t height = data[4];
+    uint8_t gap = data[5];
+    char *title_text;
+    uint32_t width_word_offset;
+
+    messagefilefound_t found = messagefile_find(md, title_token);
+    if (found.value == NULL)
+    {
+        title_text = (char *)title_token;
+    }
+    else
+    {
+        title_text = (char *)found.value;
+        title_len = found.len;
+    }
+    if (title_len > 12)
+        title_len = 12;
+    longest_text = title_len - 3;     // Apparently MessageTrans takes 3 for the borders - 1.5 chars each side?
+
+    data += 6; /* Skip the menu header parameters */
+
+    dprintf("  Menu title: %.*s  (%i chars, from: %s)\n", title_len, title_text, title_len, title_token);
+
+    // Write menu header
+    bufferdata_write_bytespadded(buf, title_text, title_len < 12 ? title_len : 12, 12);
+    bufferdata_write_byte(buf, title_fg);
+    bufferdata_write_byte(buf, title_bg);
+    bufferdata_write_byte(buf, workarea_fg);
+    bufferdata_write_byte(buf, workarea_bg);
+    width_word_offset = bufferdata_write_word(buf, 0);     // This is the width of this menu; will be fixed up later
+    bufferdata_write_word(buf, height);
+    bufferdata_write_word(buf, gap);
+
+    // Process each menu item
+    while (1)
+    {
+        const char *icontext_token = (const char *)data;
+        int icontext_len = strcspn(icontext_token, "\r\n");
+        const char *icontext_text;
+        const uint8_t *icondata = (uint8_t*)(((uint32_t)data + icontext_len + 4) & ~3);
+        uint32_t menuflags = ((uint32_t *)icondata)[0];
+        uint32_t submenu_offset = ((uint32_t *)icondata)[1];
+        uint32_t iconflags = ((uint32_t *)icondata)[2];
+        void *submenu_address = submenu_offset ? ((uint8_t *)menu_base) + submenu_offset : NULL;
+
+        dprintf("    Menu item token: %.*s at &%p, with icon flags &%08x\n", icontext_len, icontext_token, data, iconflags);
+
+        data = icondata + 12; /* Move to next item */
+
+        found = messagefile_find(md, icontext_token);
+        if (found.value == NULL)
+        {
+            icontext_text = icontext_token;
+        }
+        else
+        {
+            icontext_text = found.value;
+            icontext_len = found.len;
+            dprintf("  Found token, len = %i\n", icontext_len);
+        }
+
+        longest_text = max(longest_text, icontext_len);
+
+        bufferdata_write_word(buf, menuflags);
+        bufferdata_write_word(buf, (uint32_t)submenu_address);
+        bufferdata_write_word(buf, iconflags);
+
+        // Construct icon data
+
+        if (iconflags & IconFlag_Indirect)
+        {
+            // Indirected content
+            if (bufferdata_remaining(buf) >= 12)
+            {
+                uint8_t *indirect_buffer;
+                uint8_t *indirect_validation = NULL;
+                uint32_t indirect_size;
+                // We can safely read and write to the buffer
+                if (menuflags & MenuFlag_Writeable)
+                {
+                    uint32_t *indirect_data = (uint32_t *)bufferdata_address(buf, 0, true);
+                    indirect_buffer = (void*)indirect_data[0];
+                    indirect_validation = (void *)indirect_data[1];
+                    indirect_size = indirect_data[2];
+
+                    if (indirect_size - 1 < icontext_len)
+                        icontext_len = indirect_size - 1;
+                    memcpy(indirect_buffer, icontext_text, icontext_len);
+                    indirect_buffer[icontext_len] = '\0';
+
+                    dprintf("    Menu item writeable: %.*s  (%i chars, from: %s)\n", icontext_len, indirect_buffer, icontext_len, icontext_token);
+                }
+                else
+                {
+                    indirect_buffer = (uint8_t*)icontext_text;
+                    indirect_size = icontext_len + 1;
+                    dprintf("    Menu item indirect: %.*s  (%i chars, from: %s)\n", icontext_len, indirect_buffer, icontext_len, icontext_token);
+                }
+                bufferdata_write_word(buf, (uint32_t)indirect_buffer);
+                bufferdata_write_word(buf, (uint32_t)indirect_validation);
+                bufferdata_write_word(buf, indirect_size);
+            }
+            else
+            {
+                // Ran out of space, so just write some words to make it out to the right size
+                bufferdata_write_word(buf, 0);
+                bufferdata_write_word(buf, 0);
+                bufferdata_write_word(buf, 0);
+            }
+        }
+        else
+        {
+            dprintf("    Menu item inline: %.*s  (from: %s)\n", icontext_len, icontext_text, icontext_token);
+            bufferdata_write_bytespadded(buf, icontext_text, icontext_len, 12);
+        }
+        if (menuflags & MenuFlag_Last)
+            break;
+    }
+    if (!bufferdata_failed(buf))
+    {
+        // Only if our data write has been successful to now do we update the menu width
+        uint32_t *width_word = (uint32_t *)bufferdata_address(buf, width_word_offset, false);
+        *width_word = longest_text * 16 + 12;
+    }
+    dprintf("  Menu complete: Remaining space: %i\n", bufferdata_remaining(buf));
+    dprintf("                 Required space: %i\n", bufferdata_required(buf));
+    return data;
+}
+
+/*************************************************** Gerph *********
+ Function:      menu_writemenus
+ Description:   Write the menus supplied by the user
+ Parameters:    md-> the message data we're processing
+                menus-> the source menu data
+                buf-> the destination buffer data to populate
+ Returns:       pointer to error, or NULL if no error returned
+ ******************************************************************/
+_kernel_oserror *menu_writemenus(messagefiledata_t *md, const uint8_t *menus, bufferdata_t *buf)
+{
+    while (*menus)
+    {
+        menus = menu_writesubmenu(md, menus, buf);
+    }
+#if 0
+    /* Only if we've manually debugging the content of the menu buffers */
+    {
+        static int counter = 0;
+        char filename[256];
+        sprintf(filename, "menus%d", counter++);
+        _swix(OS_File, _INR(0,5), 10, filename, 0xffd, 0, bufferdata_address(buf, 0, false), bufferdata_address(buf, 0, true));
+    }
+#endif
+    return NULL;
+}
