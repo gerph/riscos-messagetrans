@@ -380,7 +380,8 @@ _kernel_oserror *SWI_MakeMenus(int number, _kernel_swi_regs *regs, void *pw)
     if (err)
         return err;
 
-    dprintf("MakeMenus: Given %i byte\n", size);
+    //_swix(0x104,0);
+    dprintf("MakeMenus: Given %i bytes at &%08x\n", size, buffer);
 
     bufferdata_init(&buf, buffer, size);
 
@@ -586,6 +587,7 @@ retry:
     {
         /* Get buffer */
         out_error = errorbufs_allocate();
+        size = 256;
     }
 
     {

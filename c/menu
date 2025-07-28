@@ -12,6 +12,7 @@
 #include <string.h>
 
 #include "kernel.h"
+#include "swis.h"
 
 #include "messagefile.h"
 #include "bufferdata.h"
