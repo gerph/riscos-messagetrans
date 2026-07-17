@@ -5,7 +5,7 @@
 #
 # Program specific options:
 #
-COMPONENT  = MessageTrans
+COMPONENT  = MessageTrans2
 
 # Specifies additional targets for startup
 INITTARGET = inittarget
