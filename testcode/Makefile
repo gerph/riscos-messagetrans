@@ -39,11 +39,21 @@ dirs:
 
 MODULE = MessageTrans
 
-tests-messagetrans.txt: tests-messagetrans-pyro.txt transform-pyro-tests-to-buildservice.sh
-	./transform-pyro-tests-to-buildservice.sh tests-messagetrans-pyro.txt $@
+tests-%.txt: tests-%-pyro.txt transform-pyro-tests-to-buildservice.sh
+	./transform-pyro-tests-to-buildservice.sh tests-$*-pyro.txt $@
 
 ${MODULE},ffa: ../rm32/${MODULE},ffa
 	cp $? $@
 
+
+ifeq (${TEST},)
+TESTARGS =
+else
+TESTARGS = --test "${TEST}"
+endif
+
 tests: ${MODULE},ffa tests-messagetrans.txt run-on-build-service.sh test.pl
-	./test.pl --show-command --show-diff ./run-on-build-service.sh .
+	./test.pl ${TESTARGS} --show-command --show-diff ./run-on-build-service.sh . < /dev/null
+
+build:
+	cd .. ; riscos-amu -f Makefile,fe1 ; cd - ; cp ../rm32/${MODULE},ffa ${MODULE},ffa

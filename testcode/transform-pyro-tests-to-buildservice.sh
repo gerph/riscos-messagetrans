@@ -12,8 +12,8 @@ if [[ "$input" == "" || "$output" == "" || "${input:0:2}" == '-h' ]] ; then
 fi
 
 sed -E \
-    -e "s!Expect: expect/pymodules/messagetrans!Expect: expect/messagetrans!" \
-    -e "s!Replace: expect/pymodules/messagetrans!Replace: expect/messagetrans!" \
+    -e "s!Expect: expect/pymodules/([^/]*)/!Expect: expect/\\1/!" \
+    -e "s!Replace: expect/pymodules/([^/]*)/!Replace: expect/\\1/!" \
     -e "s!\\\$TOOL --load-internal-modules!\$TOOL!" \
     -e "s!\\\$TOOL --config messagetrans.support=[^ ]*!\$TOOL!" \
     -e "s!\\\$TOOL!\$TOOL --quiet!" \
