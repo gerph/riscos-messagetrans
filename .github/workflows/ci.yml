@@ -23,19 +23,25 @@ name: RISC OS
 # Controls when the action will run. Triggers the workflow on:
 #   * push on any branch.
 #   * tag creation for tags beginning with a 'v'
+#   * pull requests
 on:
   push:
     branches: ["*"]
     tags: ["v*"]
-  # Pull request events happen on pull request state transitions, so we probably don't want this here.
-  #pull_request:
-  #  branches: ["*"]
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches: ["*"]
+
+env:
+  COMPONENT_NAME: "MessageTrans"
 
 jobs:
   build-riscos:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
+    timeout-minutes: 5
+    concurrency:
+      group: riscos-build-server
     outputs:
       version: ${{ steps.version.outputs.version }}
       leafname: ${{ steps.version.outputs.leafname }}
@@ -43,12 +49,12 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Obtain prerequisite build tool
         run: |
           # Fetch the build client
-          curl -s -L -o riscos-build-online https://github.com/gerph/robuild-client/releases/download/v0.05/riscos-build-online && chmod +x riscos-build-online
+          curl -s -L -o riscos-build-online https://github.com/gerph/robuild-client/releases/download/v0.07/riscos-build-online && chmod +x riscos-build-online
 
       - name: Build through build.riscos.online
         run: |
@@ -61,15 +67,15 @@ jobs:
       - name: Give the output a versioned name
         id: version
         run: |
-          if [[ -f VersionNum ]] ; then
+          if [ -f VersionNum ] ; then
               version=$(sed '/MajorVersion / ! d ; s/.*MajorVersion *"\(.*\)"/\1/' VersionNum)
           else
               version=$(git rev-parse --short HEAD)
           fi
           echo "This is version: $version"
-          leafname="MessageTrans-$version.zip"
+          leafname="$COMPONENT_NAME-$version.zip"
           if [ -f /tmp/built,a91 ] ; then
-              cp /tmp/built,a91 "MessageTrans-$version.zip"
+              cp /tmp/built,a91 "$leafname"
           else
               echo "No archive was built?"
               exit 1
@@ -77,12 +83,26 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "leafname=$leafname" >> $GITHUB_OUTPUT
 
-      - uses: actions/upload-artifact@v4
+      - name: Run tests
+        run: |
+          mkdir Extract
+          cd Extract
+          unzip ../MessageTrans-*.zip
+          mkdir -p ../rm32
+          mv rm32/MessageTrans2 ../rm32/MessageTrans2,ffa
+          cd ../testcode
+
+          curl -s -L -o riscos-build-online https://github.com/gerph/robuild-client/releases/download/v0.07/riscos-build-online && chmod +x riscos-build-online
+          make tests
+
+      - uses: actions/upload-artifact@v7
         with:
           name: RISCOS-build
           path: ${{ steps.version.outputs.leafname }}
         # The artifact that is downloadable from the Actions is actually a zip of the artifacts
         # that we supply. So it will be a regular Zip file containing a RISC OS Zip file.
+
+
 
   # The release only triggers when the thing that was pushed was a tag starting with 'v'
   release:
@@ -93,7 +113,7 @@ jobs:
       contents: write
     steps:
       - name: Download built RISC OS binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: RISCOS-build
 

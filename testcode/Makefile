@@ -37,7 +37,7 @@ dirs:
 	@mkdir -p module/o
 	@mkdir -p utility/o
 
-MODULE = MessageTrans
+MODULE = MessageTrans2
 
 tests-%.txt: tests-%-pyro.txt transform-pyro-tests-to-buildservice.sh
 	./transform-pyro-tests-to-buildservice.sh tests-$*-pyro.txt $@

@@ -56,13 +56,15 @@ tests:
   needs: [riscos]
   resource_group: build-service
   script:
-    - unzip MessageTrans-*.zip
-    - mkdir -p rm32
-    - mv MessageTrans rm32/MessageTrans,ffa
-
-    - cd testcode
+    - mkdir Extract
+    - cd Extract
+    - unzip ../MessageTrans-*.zip
+    - mkdir -p ../rm32
+    - mv rm32/MessageTrans2 ../rm32/MessageTrans2,ffa
+    - cd ../testcode
     - curl -s -L -o riscos-build-online https://github.com/gerph/robuild-client/releases/download/v0.07/riscos-build-online && chmod +x riscos-build-online
     - make tests
+
 
 #### Stages to execute ####
 stages:

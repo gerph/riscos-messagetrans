@@ -11,3 +11,6 @@ aif64/*
 o/*
 o32/*
 o64/*
+.rotransform
+aof/*
+aof32/*

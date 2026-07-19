@@ -26,7 +26,7 @@ files=(bin/messagetrans,ffc
       )
 
 # List of module files we will load
-modules=(MesssageTrans)
+modules=(MessageTrans2)
 
 # Add the modules we need to the files we upload
 for module in "${modules[@]}" ; do
